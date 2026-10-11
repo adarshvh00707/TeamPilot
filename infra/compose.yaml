@@ -1,0 +1,51 @@
+# Local backend stack. Postgres/Auth/Storage come from the Supabase CLI (`npx supabase start`),
+# which listens on the host; this file runs Redis plus the API and worker containers.
+#   docker compose -f infra/compose.yaml up --build
+services:
+  redis:
+    image: redis:7-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    ports: ["6379:6379"]
+    volumes: [redis-data:/data]
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ..
+      dockerfile: infra/docker/node-service.Dockerfile
+      args: { SERVICE: api }
+    env_file: ../.env
+    environment:
+      PORT: "4000"
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:54322/postgres}
+      SUPABASE_URL: ${DOCKER_SUPABASE_URL:-http://host.docker.internal:54321}
+    ports: ["4000:4000"]
+    depends_on:
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4000/health"]
+      interval: 10s
+      retries: 5
+
+  worker:
+    build:
+      context: ..
+      dockerfile: infra/docker/node-service.Dockerfile
+      args: { SERVICE: worker }
+    env_file: ../.env
+    environment:
+      REDIS_URL: redis://redis:6379
+      DATABASE_URL: ${DOCKER_DATABASE_URL:-postgresql://postgres:postgres@host.docker.internal:54322/postgres}
+    depends_on:
+      redis: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:4100/health"]
+      interval: 10s
+      retries: 5
+
+volumes:
+  redis-data:

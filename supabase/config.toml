@@ -1,0 +1,31 @@
+project_id = "teampilot-ai"
+
+[api]
+port = 54321
+schemas = ["public"]
+
+[db]
+port = 54322
+major_version = 17
+
+[db.seed]
+enabled = true
+sql_paths = ["./seed.sql"]
+
+[auth]
+site_url = "teampilot://"
+additional_redirect_urls = [
+  "teampilot://verify-email",
+  "teampilot://reset-password",
+  "exp://127.0.0.1:8081/--/verify-email",
+  "exp://127.0.0.1:8081/--/reset-password",
+]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+
+[auth.email]
+enable_signup = true
+enable_confirmations = true
+
+[storage]
+file_size_limit = "20MiB"

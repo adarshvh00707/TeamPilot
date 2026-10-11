@@ -1,0 +1,43 @@
+import pg from 'pg';
+import type { Db, Queryable, QueryResult } from './types';
+
+export function createPgDb(opts: { connectionString: string; ssl: boolean; max: number }): Db {
+  const pool = new pg.Pool({
+    connectionString: opts.connectionString,
+    ssl: opts.ssl ? { rejectUnauthorized: true } : undefined,
+    max: opts.max,
+    idleTimeoutMillis: 30_000,
+    connectionTimeoutMillis: 5_000,
+  });
+
+  const wrap = (q: pg.Pool | pg.PoolClient): Queryable => ({
+    async query<T>(text: string, params?: unknown[]): Promise<QueryResult<T>> {
+      const res = await q.query(text, params as unknown[] | undefined);
+      return { rows: res.rows as T[], rowCount: res.rowCount ?? 0 };
+    },
+  });
+
+  return {
+    ...wrap(pool),
+    async transaction(fn) {
+      const client = await pool.connect();
+      try {
+        await client.query('begin');
+        const result = await fn(wrap(client));
+        await client.query('commit');
+        return result;
+      } catch (err) {
+        await client.query('rollback').catch(() => undefined);
+        throw err;
+      } finally {
+        client.release();
+      }
+    },
+    async ping() {
+      await pool.query('select 1');
+    },
+    async close() {
+      await pool.end();
+    },
+  };
+}

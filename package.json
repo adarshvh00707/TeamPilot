@@ -1,0 +1,28 @@
+{
+  "name": "teampilot-ai",
+  "private": true,
+  "version": "0.1.0",
+  "description": "TeamPilot AI - mobile-first event operations and real-time task dispatch platform",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.19"
+  },
+  "devDependencies": {
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "react-native-reanimated": "4.5.1",
+    "react-native-worklets": "0.10.1"
+  },
+  "scripts": {
+    "dev:api": "npm run dev -w @teampilot/api",
+    "dev:worker": "npm run dev -w @teampilot/worker",
+    "dev:mobile": "npm run start -w @teampilot/mobile",
+    "build": "npm run build -w @teampilot/api && npm run build -w @teampilot/worker",
+    "typecheck": "npm run typecheck --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "db:test": "npm run test -w @teampilot/api -- tests/db"
+  }
+}
