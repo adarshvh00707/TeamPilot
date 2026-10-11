@@ -17,7 +17,7 @@ export default function HomeScreen() {
 
   return (
     <Screen edges={['top', 'left', 'right']} refreshing={loading} onRefresh={refetch}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
+      <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md, paddingTop: spacing.md }}>
         <View style={{ flex: 1, gap: 2 }}>
           <AppText variant="caption" tone="muted">{today()}</AppText>
           <AppText variant="title">Hi, {name}</AppText>
@@ -25,8 +25,8 @@ export default function HomeScreen() {
         <IconButton icon={<Bell size={20} color={colors.text} />} accessibilityLabel="Notifications" onPress={() => router.push('/notifications')} />
       </View>
       {active ? (
-        <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center', marginTop: -spacing.sm }}>
-          <AppText tone="muted">{active.organizationName}</AppText>
+        <View style={{ flexDirection: 'row', gap: spacing.sm, alignItems: 'center', marginTop: -spacing.md }}>
+          <AppText tone="muted" numberOfLines={1} style={{ flexShrink: 1 }}>{active.organizationName}</AppText>
           <Badge label={active.role} tone="neutral" />
         </View>
       ) : null}

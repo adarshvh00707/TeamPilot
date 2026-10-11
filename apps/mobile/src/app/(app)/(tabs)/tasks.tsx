@@ -36,7 +36,7 @@ export default function TasksScreen() {
   return (
     <FlatList
       style={{ backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm, width: '100%', maxWidth: 560, alignSelf: 'center' }}
+      contentContainerStyle={{ paddingHorizontal: spacing.gutter, paddingTop: spacing.sm, paddingBottom: spacing.xxl, gap: spacing.md, width: '100%', maxWidth: 560, alignSelf: 'center' }}
       data={tasks.isPending || tasks.error ? [] : rows}
       keyExtractor={(t) => t.id}
       refreshing={tasks.isRefetching}
@@ -45,7 +45,12 @@ export default function TasksScreen() {
       ListHeaderComponent={
         <View style={{ gap: spacing.md, marginBottom: spacing.sm }}>
           {isManager ? <Button label="New task" onPress={() => router.push('/tasks/new')} /> : null}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: spacing.sm }}>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={{ marginHorizontal: -spacing.gutter }}
+            contentContainerStyle={{ gap: spacing.sm, paddingHorizontal: spacing.gutter }}
+          >
             {FILTERS.filter((f) => isManager || !f.managerOnly).map((f) => (
               <Chip key={f.label} label={f.label} selected={status === f.status} onPress={() => setStatus(f.status)} />
             ))}

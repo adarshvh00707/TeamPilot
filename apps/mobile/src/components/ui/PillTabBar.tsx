@@ -13,7 +13,7 @@ export function PillTabBar({ state, descriptors, navigation }: TabBarProps) {
   const insets = useSafeAreaInsets();
 
   return (
-    <View style={{ backgroundColor: colors.background, paddingHorizontal: spacing.lg, paddingTop: spacing.sm, paddingBottom: Math.max(insets.bottom, spacing.md) }}>
+    <View style={{ backgroundColor: colors.background, paddingHorizontal: spacing.gutter, paddingTop: spacing.sm, paddingBottom: Math.max(insets.bottom, spacing.lg) }}>
       <View
         style={{
           flexDirection: 'row',
@@ -49,8 +49,10 @@ export function PillTabBar({ state, descriptors, navigation }: TabBarProps) {
                 flexDirection: 'row',
                 alignItems: 'center',
                 gap: 6,
-                height: 48,
-                paddingHorizontal: focused ? spacing.lg : spacing.md,
+                height: 52,
+                minWidth: 52,
+                justifyContent: 'center',
+                paddingHorizontal: focused ? spacing.gutter : spacing.md,
                 borderRadius: radius.pill,
                 backgroundColor: focused ? colors.surface : 'transparent',
                 opacity: pressed ? 0.7 : 1,
@@ -98,9 +100,9 @@ export function LargeHeader({ title, right }: { title: string; right?: React.Rea
     <View
       style={{
         backgroundColor: colors.background,
-        paddingTop: insets.top + spacing.md,
-        paddingHorizontal: spacing.lg,
-        paddingBottom: spacing.xs,
+        paddingTop: insets.top + spacing.lg,
+        paddingHorizontal: spacing.gutter,
+        paddingBottom: spacing.sm,
         width: '100%',
         maxWidth: 560,
         alignSelf: 'center',

@@ -13,8 +13,8 @@ export function Card({ style, onPress, children, accessibilityLabel, tone = 'def
   const cardStyle = {
     backgroundColor: tone === 'ink' ? colors.ink : tone === 'muted' ? colors.surfaceMuted : colors.surface,
     borderRadius: radius.lg,
-    padding: spacing.lg,
-    gap: spacing.sm,
+    padding: spacing.gutter,
+    gap: spacing.md,
   };
   if (onPress) {
     return (

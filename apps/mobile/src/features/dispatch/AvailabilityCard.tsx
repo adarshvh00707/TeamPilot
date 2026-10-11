@@ -35,20 +35,21 @@ export function AvailabilityCard({ orgId }: { orgId: string }) {
         alignItems: 'center',
         justifyContent: 'center',
         gap: 6,
-        height: 46,
+        height: 44,
+        paddingHorizontal: spacing.sm,
         borderRadius: radius.pill,
         backgroundColor: primary ? colors.surface : 'rgba(255,255,255,0.1)',
         opacity: action.isPending && action.variables?.action === act ? 0.6 : 1,
         transform: [{ scale: pressed ? 0.97 : 1 }],
       })}
     >
-      <Icon size={18} color={primary ? colors.ink : colors.inkText} />
-      <AppText variant="label" style={{ color: primary ? colors.ink : colors.inkText }}>{label}</AppText>
+      <Icon size={16} color={primary ? colors.ink : colors.inkText} />
+      <AppText variant="label" numberOfLines={1} style={{ color: primary ? colors.ink : colors.inkText }}>{label}</AppText>
     </Pressable>
   );
 
   return (
-    <Card tone="ink" style={{ gap: spacing.md, padding: spacing.xl }}>
+    <Card tone="ink" style={{ gap: spacing.md }}>
       {availability.isPending ? <Skeleton height={60} /> : null}
       {availability.error ? <ErrorState message={errorMessage(availability.error)} onRetry={() => void availability.refetch()} /> : null}
       {a ? (
@@ -71,7 +72,7 @@ export function AvailabilityCard({ orgId }: { orgId: string }) {
                   ? 'You can receive task offers.'
                   : 'Clock in to start receiving task offers.'}
           </AppText>
-          <View style={{ flexDirection: 'row', gap: spacing.sm }}>
+          <View style={{ flexDirection: 'row', gap: spacing.sm, marginTop: spacing.xs }}>
             {!a.clockedInAt
               ? pill('Clock in', 'clock-in', LogIn, true)
               : [

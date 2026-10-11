@@ -1,5 +1,5 @@
 import { router } from 'expo-router';
-import { ClipboardCheck, PlayCircle, Timer } from 'lucide-react-native';
+import { CalendarCheck, ClipboardCheck, PlayCircle, Timer } from 'lucide-react-native';
 import { Pressable, View } from 'react-native';
 import type { ScheduleItem } from '@teampilot/shared';
 import { AppText, ListSkeleton } from '@/components/ui';
@@ -26,6 +26,7 @@ export function ScheduleRow({ item }: { item: ScheduleItem }) {
         backgroundColor: colors.surface,
         borderRadius: radius.lg,
         padding: spacing.md,
+        minHeight: 72,
         opacity: done ? 0.6 : 1,
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
@@ -49,20 +50,27 @@ export function ScheduleRow({ item }: { item: ScheduleItem }) {
 }
 
 export function TodayList({ orgId }: { orgId: string }) {
-  const { spacing } = useTheme();
+  const { colors, spacing, radius } = useTheme();
   const schedule = useSchedule(orgId);
   const items = (schedule.data ?? []).filter((s) => s.assignment.status === 'IN_PROGRESS' || isToday(s.sortAt));
   return (
-    <View style={{ gap: spacing.sm }}>
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <AppText variant="heading">Today</AppText>
-        <AppText variant="caption" tone="muted" onPress={() => router.push('/schedule')}>
-          {items.length} task{items.length === 1 ? '' : 's'} · See all
-        </AppText>
+    <View style={{ gap: spacing.md }}>
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+        <AppText variant="heading">Today · {items.length}</AppText>
+        <Pressable
+          accessibilityRole="link"
+          onPress={() => router.push('/schedule')}
+          style={{ backgroundColor: colors.surface, borderRadius: radius.pill, paddingHorizontal: spacing.md, paddingVertical: 6 }}
+        >
+          <AppText variant="label">See all</AppText>
+        </Pressable>
       </View>
       {schedule.isPending ? <ListSkeleton rows={2} /> : null}
       {!schedule.isPending && !items.length ? (
-        <AppText tone="muted">Nothing scheduled for you today.</AppText>
+        <View style={{ backgroundColor: colors.surface, borderRadius: radius.lg, padding: spacing.gutter, alignItems: 'center', gap: spacing.xs }}>
+          <CalendarCheck size={22} color={colors.textMuted} />
+          <AppText tone="muted">Nothing scheduled for you today.</AppText>
+        </View>
       ) : null}
       {items.map((i) => <ScheduleRow key={i.assignment.id} item={i} />)}
     </View>
