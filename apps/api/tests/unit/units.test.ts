@@ -40,4 +40,9 @@ describe('config', () => {
     expect(cfg.corsOrigins).toEqual(['https://a.com', 'https://b.com']);
     expect(cfg.SUPABASE_JWT_SECRET).toBeUndefined();
   });
+  it('treats blank values as unset', () => {
+    const cfg = loadConfig({ DATABASE_URL: 'postgres://x', SUPABASE_URL: 'https://p.supabase.co', SUPABASE_JWT_SECRET: '', PORT: ' ' });
+    expect(cfg.SUPABASE_JWT_SECRET).toBeUndefined();
+    expect(cfg.PORT).toBe(4000);
+  });
 });

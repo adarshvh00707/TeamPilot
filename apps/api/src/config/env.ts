@@ -10,6 +10,8 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   DATABASE_URL: z.string().min(1),
   DATABASE_SSL: booleanish.default(false),
+  /** PEM CA bundle for verifying the database certificate (Supabase signs with its own root CA). */
+  DATABASE_SSL_CA_FILE: z.string().optional(),
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(10),
   SUPABASE_URL: z.url(),
   /** Legacy HS256 JWT secret. When absent, tokens are verified against the project's JWKS endpoint. */
@@ -24,7 +26,9 @@ const envSchema = z.object({
 export type AppConfig = z.infer<typeof envSchema> & { corsOrigins: string[] };
 
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
-  const parsed = envSchema.safeParse(env);
+  // Blank values (e.g. `SUPABASE_JWT_SECRET=` copied from .env.example) mean "not set".
+  const cleaned = Object.fromEntries(Object.entries(env).filter(([, v]) => v !== undefined && v.trim() !== ''));
+  const parsed = envSchema.safeParse(cleaned);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid API configuration:\n${issues}`);

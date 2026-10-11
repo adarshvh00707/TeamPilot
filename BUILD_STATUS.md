@@ -21,8 +21,12 @@ npm-workspaces monorepo: Expo SDK 57 mobile app, Express 5 API, BullMQ worker, s
 | `npx expo export --platform android` (Metro bundles the app incl. shared package) | pass |
 | `npx expo-doctor` | 21/21 pass |
 | Docker image builds | **not run locally** (Docker unavailable); configured in CI |
-| Migrations against real Supabase / Supabase CLI | **not run** (no Docker / Supabase CLI locally). Tested on PGlite with an auth stub. |
-| App on a physical device / simulator | **not run** |
+| Migrations + seed against hosted Supabase dev project (`supabase db push`) | pass |
+| API against hosted DB over verified TLS (`DATABASE_SSL_CA_FILE` = Supabase root CA) | pass (`/ready` 200) |
+| Hosted E2E smoke: Supabase password sign-in → API `/me`, members, locations; staff invite 403; PostgREST RLS hides `token_hash` | pass |
+| Auth redirect config pushed (`supabase config push`) | pass |
+| Android bundle served over LAN by Metro | pass |
+| App on a physical device / simulator | **pending user check in Expo Go** |
 
 ## Feature status
 

@@ -30,6 +30,7 @@ WORKDIR /app
 COPY --from=prod-deps --chown=node:node /app/node_modules ./node_modules
 COPY --from=build --chown=node:node /app/apps/${SERVICE}/dist ./dist
 COPY --from=build --chown=node:node /app/apps/${SERVICE}/package.json ./package.json
+COPY --chown=node:node infra/certs ./certs
 USER node
 STOPSIGNAL SIGTERM
 CMD ["node", "--enable-source-maps", "dist/index.js"]

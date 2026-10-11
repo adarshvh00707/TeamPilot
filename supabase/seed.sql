@@ -27,7 +27,7 @@ begin
       confirmation_token, recovery_token, email_change_token_new, email_change
     ) values (
       '00000000-0000-0000-0000-000000000000', (u->>'id')::uuid, 'authenticated', 'authenticated',
-      u->>'email', crypt('TeamPilot!dev1', gen_salt('bf')), now(),
+      u->>'email', extensions.crypt('TeamPilot!dev1', extensions.gen_salt('bf')), now(),
       '{"provider":"email","providers":["email"]}', jsonb_build_object('display_name', u->>'name'), now(), now(),
       '', '', '', ''
     ) on conflict (id) do nothing;

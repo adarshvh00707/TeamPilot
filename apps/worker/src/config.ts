@@ -12,7 +12,9 @@ const envSchema = z.object({
 export type WorkerConfig = z.infer<typeof envSchema>;
 
 export function loadWorkerConfig(env: NodeJS.ProcessEnv = process.env): WorkerConfig {
-  const parsed = envSchema.safeParse(env);
+  // Blank values copied from .env.example mean "not set".
+  const cleaned = Object.fromEntries(Object.entries(env).filter(([, v]) => v !== undefined && v.trim() !== ''));
+  const parsed = envSchema.safeParse(cleaned);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  - ${i.path.join('.')}: ${i.message}`).join('\n');
     throw new Error(`Invalid worker configuration:\n${issues}`);

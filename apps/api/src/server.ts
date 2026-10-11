@@ -6,7 +6,12 @@ import { createLogger } from './utils/logger';
 
 const config = loadConfig();
 const logger = createLogger(config.LOG_LEVEL, 'api');
-const db = createPgDb({ connectionString: config.DATABASE_URL, ssl: config.DATABASE_SSL, max: config.DATABASE_POOL_MAX });
+const db = createPgDb({
+  connectionString: config.DATABASE_URL,
+  ssl: config.DATABASE_SSL,
+  caFile: config.DATABASE_SSL_CA_FILE,
+  max: config.DATABASE_POOL_MAX,
+});
 const verifyToken = createSupabaseTokenVerifier({
   supabaseUrl: config.SUPABASE_URL,
   jwtSecret: config.SUPABASE_JWT_SECRET,

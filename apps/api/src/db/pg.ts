@@ -1,10 +1,13 @@
+import { readFileSync } from 'node:fs';
 import pg from 'pg';
 import type { Db, Queryable, QueryResult } from './types';
 
-export function createPgDb(opts: { connectionString: string; ssl: boolean; max: number }): Db {
+export function createPgDb(opts: { connectionString: string; ssl: boolean; caFile?: string; max: number }): Db {
   const pool = new pg.Pool({
     connectionString: opts.connectionString,
-    ssl: opts.ssl ? { rejectUnauthorized: true } : undefined,
+    ssl: opts.ssl
+      ? { rejectUnauthorized: true, ...(opts.caFile ? { ca: readFileSync(opts.caFile, 'utf8') } : {}) }
+      : undefined,
     max: opts.max,
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 5_000,
