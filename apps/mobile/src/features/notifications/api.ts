@@ -4,9 +4,10 @@ import { api } from '@/lib/api';
 
 export const notificationKeys = { inbox: (orgId: string) => ['org', orgId, 'notifications'] as const };
 
-export function useInbox(orgId: string) {
+export function useInbox(orgId: string, enabled = true) {
   return useQuery({
     queryKey: notificationKeys.inbox(orgId),
+    enabled,
     queryFn: async () => {
       const res = await api.get<InAppNotification[]>(`/organizations/${orgId}/notifications`);
       return { items: res.data, unread: Number((res.meta as { unread?: number } | undefined)?.unread ?? 0) };

@@ -4,14 +4,14 @@ import { useTheme } from '@/theme';
 interface Props extends ViewProps {
   onPress?: () => void;
   accessibilityLabel?: string;
+  /** `muted` sits on a surface (nested rows); `ink` is the dark highlight card. */
+  tone?: 'default' | 'muted' | 'ink';
 }
 
-export function Card({ style, onPress, children, accessibilityLabel, ...rest }: Props) {
+export function Card({ style, onPress, children, accessibilityLabel, tone = 'default', ...rest }: Props) {
   const { colors, radius, spacing } = useTheme();
   const cardStyle = {
-    backgroundColor: colors.surface,
-    borderColor: colors.border,
-    borderWidth: 1,
+    backgroundColor: tone === 'ink' ? colors.ink : tone === 'muted' ? colors.surfaceMuted : colors.surface,
     borderRadius: radius.lg,
     padding: spacing.lg,
     gap: spacing.sm,
@@ -22,7 +22,7 @@ export function Card({ style, onPress, children, accessibilityLabel, ...rest }: 
         accessibilityRole="button"
         accessibilityLabel={accessibilityLabel}
         onPress={onPress}
-        style={({ pressed }) => [cardStyle, { opacity: pressed ? 0.85 : 1 }, style as object]}
+        style={({ pressed }) => [cardStyle, { transform: [{ scale: pressed ? 0.98 : 1 }], opacity: pressed ? 0.92 : 1 }, style as object]}
       >
         {children}
       </Pressable>

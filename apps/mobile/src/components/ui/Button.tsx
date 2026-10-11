@@ -19,7 +19,7 @@ export function Button({ label, variant = 'primary', loading, disabled, icon, fu
     danger: colors.danger,
     ghost: 'transparent',
   }[variant];
-  const fg = variant === 'primary' ? colors.primaryText : variant === 'danger' ? '#FFFFFF' : variant === 'ghost' ? colors.primary : colors.text;
+  const fg = variant === 'primary' ? colors.primaryText : variant === 'danger' ? '#FFFFFF' : colors.text;
 
   return (
     <Pressable
@@ -32,10 +32,11 @@ export function Button({ label, variant = 'primary', loading, disabled, icon, fu
         styles.base,
         {
           backgroundColor: bg,
-          borderRadius: radius.md,
-          paddingHorizontal: spacing.lg,
+          borderRadius: radius.pill,
+          paddingHorizontal: spacing.xl,
           alignSelf: fullWidth ? 'stretch' : 'flex-start',
-          opacity: isDisabled ? 0.55 : pressed ? 0.85 : 1,
+          opacity: isDisabled ? 0.45 : 1,
+          transform: [{ scale: pressed && !isDisabled ? 0.97 : 1 }],
         },
       ]}
       {...rest}

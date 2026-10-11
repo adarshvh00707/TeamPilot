@@ -16,7 +16,7 @@ export function Badge({ label, tone = 'info' }: { label: string; tone?: 'info' |
   } as const;
   const [bg, fg] = map[tone];
   return (
-    <View style={{ backgroundColor: bg, borderRadius: radius.pill, paddingHorizontal: spacing.sm, paddingVertical: 2, alignSelf: 'flex-start' }}>
+    <View style={{ backgroundColor: bg, borderRadius: radius.pill, paddingHorizontal: spacing.sm + 2, paddingVertical: 3, alignSelf: 'flex-start' }}>
       <AppText variant="caption" style={{ color: fg, fontWeight: '600' }}>
         {label}
       </AppText>

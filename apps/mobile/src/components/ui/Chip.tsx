@@ -16,12 +16,10 @@ export function Chip({ label, selected, onPress }: { label: string; selected?: b
         justifyContent: 'center',
         paddingHorizontal: spacing.md,
         borderRadius: radius.pill,
-        borderWidth: 1,
-        borderColor: selected ? colors.primary : colors.border,
-        backgroundColor: selected ? colors.infoSurface : colors.surface,
+        backgroundColor: selected ? colors.ink : colors.surfaceMuted,
       }}
     >
-      <AppText variant="caption" style={{ color: selected ? colors.primary : colors.text, fontWeight: '600' }}>
+      <AppText variant="caption" style={{ color: selected ? colors.inkText : colors.text, fontWeight: '600' }}>
         {label}
       </AppText>
     </Pressable>

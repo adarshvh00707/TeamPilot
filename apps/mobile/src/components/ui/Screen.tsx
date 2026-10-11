@@ -13,7 +13,7 @@ interface Props {
 
 export function Screen({ children, scroll = true, edges = ['left', 'right'], refreshing, onRefresh }: Props) {
   const { colors, spacing } = useTheme();
-  const content = { padding: spacing.lg, gap: spacing.lg };
+  const content = { padding: spacing.lg, gap: spacing.lg, width: '100%' as const, maxWidth: 560, alignSelf: 'center' as const };
   return (
     <SafeAreaView edges={edges} style={[styles.flex, { backgroundColor: colors.background }]}>
       <KeyboardAvoidingView style={styles.flex} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>

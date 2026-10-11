@@ -1,6 +1,7 @@
-import { View } from 'react-native';
+import { Coffee, LogIn, LogOut, PauseCircle, PlayCircle } from 'lucide-react-native';
+import { Pressable, View } from 'react-native';
 import type { MyAvailability } from '@teampilot/shared';
-import { AppText, Badge, Button, Card, ErrorState, ListSkeleton } from '@/components/ui';
+import { AppText, Card, ErrorState, Skeleton } from '@/components/ui';
 import { formatTime, humanize } from '@/features/work/format';
 import { errorMessage } from '@/lib/api';
 import { useTheme } from '@/theme';
@@ -13,47 +14,72 @@ export const availabilityTone = (s: MyAvailability['status']) =>
 export const verificationLabel = (v: MyAvailability['verification']) =>
   v === 'VERIFIED' ? 'Verified' : v === 'MANUAL' ? 'Unverified (manual)' : humanize(v);
 
+const DOT = { success: '#5BCB7A', warning: '#F5B85A', neutral: '#71717A' } as const;
+
 export function AvailabilityCard({ orgId }: { orgId: string }) {
-  const { spacing } = useTheme();
+  const { colors, spacing, radius } = useTheme();
   const availability = useMyAvailability(orgId);
   const action = useAvailabilityAction(orgId);
   const a = availability.data;
 
-  const btn = (label: string, act: AvailabilityAction, variant: 'primary' | 'secondary' = 'secondary', body?: object) => (
-    <View key={act} style={{ flex: 1 }}>
-      <Button
-        label={label}
-        variant={variant}
-        loading={action.isPending && action.variables?.action === act}
-        disabled={action.isPending}
-        onPress={() => action.mutate({ action: act, body })}
-      />
-    </View>
+  const pill = (label: string, act: AvailabilityAction, Icon: typeof Coffee, primary = false, body?: object) => (
+    <Pressable
+      key={act}
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      disabled={action.isPending}
+      onPress={() => action.mutate({ action: act, body })}
+      style={({ pressed }) => ({
+        flex: 1,
+        flexDirection: 'row',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: 6,
+        height: 46,
+        borderRadius: radius.pill,
+        backgroundColor: primary ? colors.surface : 'rgba(255,255,255,0.1)',
+        opacity: action.isPending && action.variables?.action === act ? 0.6 : 1,
+        transform: [{ scale: pressed ? 0.97 : 1 }],
+      })}
+    >
+      <Icon size={18} color={primary ? colors.ink : colors.inkText} />
+      <AppText variant="label" style={{ color: primary ? colors.ink : colors.inkText }}>{label}</AppText>
+    </Pressable>
   );
 
   return (
-    <Card>
-      <AppText variant="heading">Availability</AppText>
-      {availability.isPending ? <ListSkeleton rows={1} /> : null}
+    <Card tone="ink" style={{ gap: spacing.md, padding: spacing.xl }}>
+      {availability.isPending ? <Skeleton height={60} /> : null}
       {availability.error ? <ErrorState message={errorMessage(availability.error)} onRetry={() => void availability.refetch()} /> : null}
       {a ? (
         <>
-          <View style={{ flexDirection: 'row', gap: spacing.sm, flexWrap: 'wrap' }}>
-            <Badge label={humanize(a.status)} tone={availabilityTone(a.status)} />
-            {a.clockedInAt ? <Badge label={verificationLabel(a.verification)} tone="neutral" /> : null}
-            {a.paused ? <Badge label="Offers paused" tone="warning" /> : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.sm }}>
+            <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: DOT[availabilityTone(a.status)] }} />
+            <AppText variant="caption" style={{ color: '#A1A1AA' }}>
+              {a.clockedInAt ? `On shift since ${formatTime(a.clockedInAt)} · ${verificationLabel(a.verification)}` : 'Off shift'}
+            </AppText>
           </View>
-          {a.clockedInAt ? <AppText tone="muted">Clocked in at {formatTime(a.clockedInAt)}</AppText> : null}
-          {a.activeBreak ? <AppText tone="muted">On break until {formatTime(a.activeBreak.expectedEndAt)}</AppText> : null}
+          <AppText variant="display" style={{ color: colors.inkText }}>
+            {a.activeBreak ? 'On break' : a.paused ? 'Paused' : humanize(a.status)}
+          </AppText>
+          <AppText variant="caption" style={{ color: '#A1A1AA' }}>
+            {a.activeBreak
+              ? `Back at ${formatTime(a.activeBreak.expectedEndAt)}. You won't get offers until then.`
+              : a.paused
+                ? 'You will not receive new task offers.'
+                : a.clockedInAt
+                  ? 'You can receive task offers.'
+                  : 'Clock in to start receiving task offers.'}
+          </AppText>
           <View style={{ flexDirection: 'row', gap: spacing.sm }}>
             {!a.clockedInAt
-              ? btn('Clock in', 'clock-in', 'primary')
+              ? pill('Clock in', 'clock-in', LogIn, true)
               : [
-                  a.activeBreak ? btn('End break', 'breaks/end', 'primary') : btn('Start 15 min break', 'breaks/start', 'secondary', { minutes: 15 }),
-                  a.paused ? btn('Resume offers', 'resume', 'primary') : btn('Pause offers', 'pause'),
+                  a.activeBreak ? pill('End break', 'breaks/end', PlayCircle, true) : pill('Break', 'breaks/start', Coffee, false, { minutes: 15 }),
+                  a.paused ? pill('Resume', 'resume', PlayCircle, true) : pill('Pause', 'pause', PauseCircle),
+                  pill('Clock out', 'clock-out', LogOut),
                 ]}
           </View>
-          {a.clockedInAt ? btn('Clock out', 'clock-out') : null}
         </>
       ) : null}
       {action.error ? <ErrorState message={errorMessage(action.error)} /> : null}

@@ -26,9 +26,9 @@ export const Input = forwardRef<TextInput, InputProps>(function Input({ label, e
           {
             color: colors.text,
             backgroundColor: colors.surface,
-            borderColor: error ? colors.danger : colors.border,
+            borderColor: error ? colors.danger : 'transparent',
             borderRadius: radius.md,
-            paddingHorizontal: spacing.md,
+            paddingHorizontal: spacing.lg,
           },
           style,
         ]}
@@ -72,5 +72,5 @@ export function TextField<T extends FieldValues>({ control, name, ...rest }: Fie
 }
 
 const styles = StyleSheet.create({
-  input: { minHeight: 48, borderWidth: 1 },
+  input: { minHeight: 52, borderWidth: 1.5 },
 });
