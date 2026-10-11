@@ -25,6 +25,13 @@ describe('task state machine', () => {
     }
   });
 
+  it('allows direct manager staffing from scheduled and back', () => {
+    expect(taskStateMachine.can('SCHEDULED', 'PARTIALLY_STAFFED')).toBe(true);
+    expect(taskStateMachine.can('SCHEDULED', 'FULLY_STAFFED')).toBe(true);
+    expect(taskStateMachine.can('PARTIALLY_STAFFED', 'SCHEDULED')).toBe(true);
+    expect(taskStateMachine.can('SCHEDULED', 'IN_PROGRESS')).toBe(false);
+  });
+
   it('does not allow a draft to jump straight to fully staffed', () => {
     expect(() => taskStateMachine.assert('DRAFT', 'FULLY_STAFFED')).toThrow(InvalidTransitionError);
   });

@@ -48,6 +48,12 @@ export const ASSIGNMENT_STATUSES = [
 ] as const;
 export type AssignmentStatus = (typeof ASSIGNMENT_STATUSES)[number];
 
+export const ASSIGNMENT_SOURCES = ['OFFER', 'MANAGER', 'MANAGER_OVERRIDE', 'IMPORT'] as const;
+export type AssignmentSource = (typeof ASSIGNMENT_SOURCES)[number];
+
+/** Task states a manager may set directly; staffing states are derived from assignments. */
+export const MANUAL_TASK_TARGETS = ['DRAFT', 'SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
+
 export const AVAILABILITY_STATUSES = [
   'OFF_SHIFT',
   'UNKNOWN',

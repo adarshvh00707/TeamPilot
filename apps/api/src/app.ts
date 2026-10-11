@@ -12,6 +12,7 @@ import { errorHandler, notFoundHandler } from './middleware/error-handler';
 import { meRouter } from './routes/me';
 import { buildOpenApiDocument } from './routes/openapi';
 import { organizationsRouter } from './routes/organizations';
+import { workRouter } from './routes/work';
 
 export interface AppDeps {
   db: Db;
@@ -77,6 +78,7 @@ export function createApp(deps: AppDeps): Express {
   v1.use(requireAuth(deps.verifyToken));
   v1.use(meRouter(deps));
   v1.use(organizationsRouter(deps));
+  v1.use(workRouter(deps));
   app.use('/api/v1', v1);
 
   app.use(notFoundHandler);

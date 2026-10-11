@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MEMBERSHIP_STATUSES, ROLES } from '../constants/domain';
+import { EVENT_STATUSES, MANUAL_TASK_TARGETS, MEMBERSHIP_STATUSES, PRIORITIES, ROLES, TASK_STATUSES } from '../constants/domain';
 
 export function isValidTimeZone(tz: string): boolean {
   try {
@@ -85,3 +85,112 @@ export const updateLocationSchema = z
   })
   .refine((v) => Object.keys(v).length > 0, 'At least one field is required');
 export type UpdateLocationInput = z.infer<typeof updateLocationSchema>;
+
+const dateTimeSchema = z.iso.datetime({ offset: true });
+const nonEmptyPatch = (v: object) => Object.keys(v).filter((k) => k !== 'expectedVersion').length > 0;
+
+export const createEventSchema = z
+  .object({
+    title: z.string().trim().min(1).max(200),
+    description: z.string().trim().max(5000).optional(),
+    startAt: dateTimeSchema,
+    endAt: dateTimeSchema,
+    timezone: timeZoneSchema,
+    locationId: uuidSchema.optional(),
+    priority: z.enum(PRIORITIES).default('NORMAL'),
+  })
+  .refine((v) => Date.parse(v.endAt) > Date.parse(v.startAt), { message: 'End must be after start', path: ['endAt'] });
+export type CreateEventInput = z.infer<typeof createEventSchema>;
+
+export const updateEventSchema = z
+  .strictObject({
+    title: z.string().trim().min(1).max(200).optional(),
+    description: z.string().trim().max(5000).nullable().optional(),
+    startAt: dateTimeSchema.optional(),
+    endAt: dateTimeSchema.optional(),
+    timezone: timeZoneSchema.optional(),
+    locationId: uuidSchema.nullable().optional(),
+    priority: z.enum(PRIORITIES).optional(),
+  })
+  .refine(nonEmptyPatch, 'At least one field is required');
+export type UpdateEventInput = z.infer<typeof updateEventSchema>;
+
+export const eventTransitionSchema = z.object({ status: z.enum(EVENT_STATUSES) });
+export type EventTransitionInput = z.infer<typeof eventTransitionSchema>;
+
+export const listEventsQuerySchema = paginationQuerySchema.extend({
+  from: dateTimeSchema.optional(),
+  to: dateTimeSchema.optional(),
+  status: z.enum(EVENT_STATUSES).optional(),
+});
+
+const skillKeySchema = z.string().regex(/^[a-z0-9_-]{1,64}$/, 'Use lowercase skill keys');
+
+export const createTaskSchema = z
+  .object({
+    eventId: uuidSchema.optional(),
+    title: z.string().trim().min(1).max(200),
+    description: z.string().trim().max(5000).optional(),
+    locationId: uuidSchema.optional(),
+    priority: z.enum(PRIORITIES).default('NORMAL'),
+    estimatedDurationMinutes: z.number().int().min(1).max(1440).optional(),
+    requiredHeadcount: z.number().int().min(1).max(500).default(1),
+    minimumRequiredHeadcount: z.number().int().min(1).max(500).optional(),
+    completionDeadline: dateTimeSchema.optional(),
+    dispatchStartAt: dateTimeSchema.optional(),
+    offerResponseWindowMinutes: z.number().int().min(1).max(1440).default(10),
+    requiredSkills: z.array(skillKeySchema).max(20).default([]),
+    instructions: z.string().trim().max(5000).optional(),
+    ownerUserId: uuidSchema.optional(),
+  })
+  .refine((v) => v.minimumRequiredHeadcount === undefined || v.minimumRequiredHeadcount <= v.requiredHeadcount, {
+    message: 'Minimum headcount cannot exceed required headcount',
+    path: ['minimumRequiredHeadcount'],
+  });
+export type CreateTaskInput = z.infer<typeof createTaskSchema>;
+
+export const updateTaskSchema = z
+  .strictObject({
+    /** Optimistic concurrency: rejected with 409 if the task changed since this version. */
+    expectedVersion: z.number().int().min(1).optional(),
+    eventId: uuidSchema.nullable().optional(),
+    title: z.string().trim().min(1).max(200).optional(),
+    description: z.string().trim().max(5000).nullable().optional(),
+    locationId: uuidSchema.nullable().optional(),
+    priority: z.enum(PRIORITIES).optional(),
+    estimatedDurationMinutes: z.number().int().min(1).max(1440).nullable().optional(),
+    requiredHeadcount: z.number().int().min(1).max(500).optional(),
+    minimumRequiredHeadcount: z.number().int().min(1).max(500).nullable().optional(),
+    completionDeadline: dateTimeSchema.nullable().optional(),
+    dispatchStartAt: dateTimeSchema.nullable().optional(),
+    offerResponseWindowMinutes: z.number().int().min(1).max(1440).optional(),
+    requiredSkills: z.array(skillKeySchema).max(20).optional(),
+    instructions: z.string().trim().max(5000).nullable().optional(),
+    ownerUserId: uuidSchema.nullable().optional(),
+  })
+  .refine(nonEmptyPatch, 'At least one field is required');
+export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
+
+export const taskTransitionSchema = z.object({
+  status: z.enum(MANUAL_TASK_TARGETS),
+  expectedVersion: z.number().int().min(1).optional(),
+});
+export type TaskTransitionInput = z.infer<typeof taskTransitionSchema>;
+
+export const listTasksQuerySchema = paginationQuerySchema.extend({
+  eventId: uuidSchema.optional(),
+  status: z.enum(TASK_STATUSES).optional(),
+});
+
+export const createAssignmentSchema = z.object({
+  userId: uuidSchema,
+  /** Required when the task is already at its required headcount. */
+  overrideReason: z.string().trim().min(3).max(500).optional(),
+});
+export type CreateAssignmentInput = z.infer<typeof createAssignmentSchema>;
+
+export const scheduleQuerySchema = z.object({
+  from: dateTimeSchema.optional(),
+  to: dateTimeSchema.optional(),
+  includeCompleted: z.enum(['true', 'false']).default('false').transform((v) => v === 'true'),
+});

@@ -29,12 +29,17 @@ export default function HomeScreen() {
         </AppText>
       </Card>
 
-      <UnavailableNotice feature="Assignments, task offers, deadlines, and break controls" phase="Phases 2–3" />
+      <Card onPress={() => router.push('/schedule')} accessibilityLabel="Open my schedule">
+        <AppText variant="heading">My schedule</AppText>
+        <AppText tone="muted">See and respond to the tasks you are assigned to.</AppText>
+      </Card>
+
+      <UnavailableNotice feature="Automatic task offers and break controls" phase="Phase 3" />
 
       {isManager ? (
         <Card onPress={() => router.push('/operations')} accessibilityLabel="Open manager operations">
           <AppText variant="heading">Manager operations</AppText>
-          <AppText tone="muted">Manage your team, invitations, and locations.</AppText>
+          <AppText tone="muted">Manage events, your team, invitations, and locations.</AppText>
         </Card>
       ) : null}
     </Screen>

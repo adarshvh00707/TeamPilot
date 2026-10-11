@@ -1,7 +1,14 @@
 import { z } from 'zod';
 import {
   acceptInvitationSchema,
+  createAssignmentSchema,
+  createEventSchema,
   createInvitationSchema,
+  createTaskSchema,
+  eventTransitionSchema,
+  taskTransitionSchema,
+  updateEventSchema,
+  updateTaskSchema,
   createLocationSchema,
   createOrganizationSchema,
   updateLocationSchema,
@@ -42,6 +49,26 @@ const operations: Operation[] = [
   { method: 'get', path: `${ORG}/locations/{locationId}`, summary: 'Get location', tag: 'Locations', minRole: 'STAFF' },
   { method: 'post', path: `${ORG}/locations`, summary: 'Create location', tag: 'Locations', body: createLocationSchema, minRole: 'MANAGER' },
   { method: 'patch', path: `${ORG}/locations/{locationId}`, summary: 'Update or archive location', tag: 'Locations', body: updateLocationSchema, minRole: 'MANAGER' },
+  { method: 'get', path: `${ORG}/events`, summary: 'List events (drafts hidden from staff)', tag: 'Events', minRole: 'STAFF' },
+  { method: 'post', path: `${ORG}/events`, summary: 'Create event (DRAFT)', tag: 'Events', body: createEventSchema, minRole: 'MANAGER' },
+  { method: 'get', path: `${ORG}/events/{eventId}`, summary: 'Get event with its tasks', tag: 'Events', minRole: 'STAFF' },
+  { method: 'patch', path: `${ORG}/events/{eventId}`, summary: 'Update event', tag: 'Events', body: updateEventSchema, minRole: 'MANAGER' },
+  { method: 'post', path: `${ORG}/events/{eventId}/transition`, summary: 'Change event status (cancel cascades to tasks)', tag: 'Events', body: eventTransitionSchema, minRole: 'MANAGER' },
+  { method: 'get', path: `${ORG}/tasks`, summary: 'List tasks (drafts hidden from staff)', tag: 'Tasks', minRole: 'STAFF' },
+  { method: 'post', path: `${ORG}/tasks`, summary: 'Create task (DRAFT)', tag: 'Tasks', body: createTaskSchema, minRole: 'MANAGER' },
+  { method: 'get', path: `${ORG}/tasks/{taskId}`, summary: 'Get task with assignments', tag: 'Tasks', minRole: 'STAFF' },
+  { method: 'patch', path: `${ORG}/tasks/{taskId}`, summary: 'Update task (optional expectedVersion)', tag: 'Tasks', body: updateTaskSchema, minRole: 'MANAGER' },
+  { method: 'post', path: `${ORG}/tasks/{taskId}/transition`, summary: 'Change task status', tag: 'Tasks', body: taskTransitionSchema, minRole: 'MANAGER' },
+  { method: 'post', path: `${ORG}/tasks/{taskId}/assignments`, summary: 'Assign a member (override reason needed past headcount)', tag: 'Assignments', body: createAssignmentSchema, minRole: 'MANAGER' },
+  ...(['accept', 'decline', 'start', 'complete'] as const).map((a) => ({
+    method: 'post' as const,
+    path: `${ORG}/assignments/{assignmentId}/${a}`,
+    summary: `${a[0]!.toUpperCase()}${a.slice(1)} own assignment`,
+    tag: 'Assignments',
+    minRole: 'STAFF',
+  })),
+  { method: 'post', path: `${ORG}/assignments/{assignmentId}/cancel`, summary: 'Cancel an assignment', tag: 'Assignments', minRole: 'MANAGER' },
+  { method: 'get', path: `${ORG}/schedule`, summary: 'My upcoming assignments', tag: 'Schedule', minRole: 'STAFF' },
 ];
 
 const errorSchema = {

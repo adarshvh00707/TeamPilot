@@ -46,8 +46,20 @@ npm-workspaces monorepo: Expo SDK 57 mobile app, Express 5 API, BullMQ worker, s
 - [ ] Google / Microsoft sign-in (deferred; the UI says so)
 - [ ] Offline banner (needs `@react-native-community/netinfo`); network failures currently surface as error states with retry
 
-### Phase 2: Events and tasks (not started)
-Event and task CRUD, publishing and status transitions using the shared state machines, manager assignment, personal schedule, and calendar. The app shows clearly labeled "Not available yet" notices on these tabs.
+### Phase 2: Events and tasks (complete)
+
+- [x] Events API: list (time window, status, cursor), create, get with tasks, edit, status transitions via `eventStateMachine`; publishing stamps `published_at`; cancelling cascades to open tasks and their live assignments in one transaction
+- [x] Tasks API: list (event, status, cursor), create, get with assignments and event, edit with optional `expectedVersion` (409 on stale writes), manual transitions limited to `MANUAL_TASK_TARGETS`; staffing states (`PARTIALLY_STAFFED` / `FULLY_STAFFED`) are derived from assignments, never set by hand
+- [x] State machine: `SCHEDULED <-> PARTIALLY_STAFFED / FULLY_STAFFED` added so managers can staff without a dispatch round
+- [x] Manager assignment with the task row locked; assigning past `required_headcount` requires an override reason, stored as `MANAGER_OVERRIDE` and audited as `task.assigned_override`
+- [x] Assignee actions: accept, decline, start (moves a staffed task to `IN_PROGRESS`), complete; manager cancel; staff cannot see or act on other people's assignments
+- [x] Drafts (events and tasks) hidden from staff; tasks cannot be scheduled under a draft event
+- [x] Personal schedule endpoint, ordered by event start, dispatch start, deadline, then assignment time
+- [x] Mobile: Schedule tab (day-grouped agenda with accept/decline/start/complete), Tasks tab (status filters, staffing counts), event list/create/detail with status controls, task create/detail with status controls, assignment, override reason, and removal; Events entry in Operations
+- [x] Auth gate waits for session and memberships before rendering any signed-in screen (fixes cold deep links landing on a blank onboarding screen)
+- [x] Tests: 16 API integration tests for events, tasks, assignments, and staffing; state-machine test for direct staffing. Verified end to end on the hosted dev project (manager creates/publishes event, creates/schedules task, assigns two staff; staff see it in their schedule, accept, and start)
+- [ ] Date/time entry is a text field (`YYYY-MM-DD HH:mm`, device time zone); a native date picker is a follow-up
+- [ ] Task templates and dependencies (tables exist) are not exposed yet
 
 ### Phase 3: Dispatch engine (not started; schema prepared)
 Attendance provider interface, manual attendance fallback (marked unverified), availability and eligibility, break management, fair workload scoring, seeded tie-breaking, offers, atomic acceptance with capacity locking, dispatch waves, escalation.
@@ -84,6 +96,5 @@ None for continuing development. The following are needed to validate against re
 
 ## Next milestones
 
-1. **Phase 2**: events and tasks API and screens, status transitions enforced through `taskStateMachine` and `eventStateMachine`, manager assignment with an audited override reason, personal schedule.
-2. Add a Postgres service container to CI for multi-connection concurrency tests.
-3. **Phase 3**: dispatch engine as a pure, seeded, unit-tested module plus transactional acceptance.
+1. Add a Postgres service container to CI for multi-connection concurrency tests.
+2. **Phase 3**: dispatch engine as a pure, seeded, unit-tested module plus transactional acceptance (needs a Redis URL for the worker).
