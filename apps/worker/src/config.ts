@@ -5,6 +5,10 @@ const envSchema = z.object({
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),
   REDIS_URL: z.string().regex(/^rediss?:\/\//, 'REDIS_URL must start with redis:// or rediss://'),
   DATABASE_URL: z.string().min(1),
+  DATABASE_SSL: z.enum(['true', 'false', '1', '0']).default('false').transform((v) => v === 'true' || v === '1'),
+  DATABASE_SSL_CA_FILE: z.string().optional(),
+  DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(5),
+  DISPATCH_SWEEP_MS: z.coerce.number().int().min(1_000).max(300_000).default(10_000),
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(5),
   WORKER_HEALTH_PORT: z.coerce.number().int().min(1).max(65535).default(4100),
 });

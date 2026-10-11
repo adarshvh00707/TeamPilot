@@ -16,6 +16,7 @@ import {
 } from '@teampilot/shared';
 import type { Db, Queryable } from '../db/types';
 import { writeAudit } from '../repositories/audit';
+import { cancelRunningRounds, withdrawOpenOffers } from '../repositories/dispatch';
 import { getEvent, insertEvent, setEventStatus, updateEvent } from '../repositories/events';
 import { getLocation } from '../repositories/locations';
 import { findActiveMembership } from '../repositories/memberships';
@@ -110,6 +111,8 @@ export async function transitionEvent(db: Db, actor: Actor, eventId: string, to:
     let cancelledTasks = 0;
     if (to === 'CANCELLED') {
       for (const t of await listOpenTaskIdsForEvent(tx, actor.organizationId, eventId)) {
+        await withdrawOpenOffers(tx, actor.organizationId, t.id, 'TASK_CANCELLED');
+        await cancelRunningRounds(tx, t.id);
         await cancelLiveAssignments(tx, actor.organizationId, t.id);
         await setTaskStatus(tx, actor.organizationId, t.id, 'CANCELLED');
         cancelledTasks++;
@@ -166,7 +169,7 @@ function assertVersion(task: Task, expected: number | undefined) {
  * Derives the staffing state from assignments. Only touches tasks in a staffing-related state, and only
  * moves along transitions the state machine allows.
  */
-async function syncStaffing(tx: Queryable, organizationId: string, taskId: string) {
+export async function syncStaffing(tx: Queryable, organizationId: string, taskId: string) {
   const task = (await getTask(tx, organizationId, taskId))!;
   if (!['SCHEDULED', 'DISPATCHING', 'PARTIALLY_STAFFED', 'FULLY_STAFFED'].includes(task.status)) return task;
   const { staffed } = task.staffing;
@@ -216,6 +219,10 @@ export async function transitionTask(db: Db, actor: Actor, taskId: string, to: T
     }
     taskStateMachine.assert(current.status, to);
     if (to === 'DRAFT' && current.staffing.assigned > 0) throw conflict('Remove assignments before moving the task back to draft');
+    if (to !== 'IN_PROGRESS') {
+      await withdrawOpenOffers(tx, actor.organizationId, taskId, to === 'CANCELLED' ? 'TASK_CANCELLED' : 'TASK_CHANGED');
+      await cancelRunningRounds(tx, taskId);
+    }
     if (to === 'CANCELLED') await cancelLiveAssignments(tx, actor.organizationId, taskId);
     let updated = (await setTaskStatus(tx, actor.organizationId, taskId, to))!;
     if (to === 'SCHEDULED') updated = await syncStaffing(tx, actor.organizationId, taskId);

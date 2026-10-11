@@ -69,6 +69,20 @@ const operations: Operation[] = [
   })),
   { method: 'post', path: `${ORG}/assignments/{assignmentId}/cancel`, summary: 'Cancel an assignment', tag: 'Assignments', minRole: 'MANAGER' },
   { method: 'get', path: `${ORG}/schedule`, summary: 'My upcoming assignments', tag: 'Schedule', minRole: 'STAFF' },
+  { method: 'get', path: `${ORG}/me/availability`, summary: 'My availability (manual clock-ins are unverified)', tag: 'Availability', minRole: 'STAFF' },
+  ...(['clock-in', 'clock-out', 'pause', 'resume', 'breaks/start', 'breaks/end'] as const).map((a) => ({
+    method: 'post' as const,
+    path: `${ORG}/me/${a}`,
+    summary: `Availability: ${a.replace('/', ' ')}`,
+    tag: 'Availability',
+    minRole: 'STAFF' as const,
+  })),
+  { method: 'get', path: `${ORG}/roster`, summary: 'Live roster with availability', tag: 'Availability', minRole: 'MANAGER' },
+  { method: 'get', path: `${ORG}/me/offers`, summary: 'My open task offers', tag: 'Dispatch', minRole: 'STAFF' },
+  { method: 'post', path: `${ORG}/offers/{offerId}/accept`, summary: 'Accept an offer (first come, first served)', tag: 'Dispatch', minRole: 'STAFF' },
+  { method: 'post', path: `${ORG}/offers/{offerId}/decline`, summary: 'Decline an offer', tag: 'Dispatch', minRole: 'STAFF' },
+  { method: 'post', path: `${ORG}/tasks/{taskId}/dispatch`, summary: 'Start automatic dispatch', tag: 'Dispatch', minRole: 'MANAGER' },
+  { method: 'post', path: `${ORG}/tasks/{taskId}/dispatch/stop`, summary: 'Stop dispatch and withdraw open offers', tag: 'Dispatch', minRole: 'MANAGER' },
 ];
 
 const errorSchema = {

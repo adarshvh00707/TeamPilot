@@ -3,6 +3,7 @@ import { Alert, Platform, View } from 'react-native';
 import { router, Stack, useLocalSearchParams } from 'expo-router';
 import { MANUAL_TASK_TARGETS, taskStateMachine, type TaskDetail, type TaskStatus } from '@teampilot/shared';
 import { AppText, Badge, Button, Card, Chip, ErrorState, Input, ListSkeleton, Screen } from '@/components/ui';
+import { DispatchPanel } from '@/features/dispatch/DispatchPanel';
 import { useMembers } from '@/features/org/api';
 import { useActiveOrgId, useOrg } from '@/features/org/OrgProvider';
 import { AssignmentActions } from '@/features/work/AssignmentActions';
@@ -168,6 +169,7 @@ export default function TaskScreen() {
       ) : null}
 
       {isManager ? <ManagerControls orgId={orgId} task={t} /> : null}
+      {isManager ? <DispatchPanel orgId={orgId} task={t} /> : null}
 
       <Card>
         <AppText variant="heading">People</AppText>

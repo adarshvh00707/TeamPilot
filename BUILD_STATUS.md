@@ -61,8 +61,18 @@ npm-workspaces monorepo: Expo SDK 57 mobile app, Express 5 API, BullMQ worker, s
 - [ ] Date/time entry is a text field (`YYYY-MM-DD HH:mm`, device time zone); a native date picker is a follow-up
 - [ ] Task templates and dependencies (tables exist) are not exposed yet
 
-### Phase 3: Dispatch engine (not started; schema prepared)
-Attendance provider interface, manual attendance fallback (marked unverified), availability and eligibility, break management, fair workload scoring, seeded tie-breaking, offers, atomic acceptance with capacity locking, dispatch waves, escalation.
+### Phase 3: Dispatch engine (complete)
+
+- [x] `AttendanceProvider` interface with a manual provider; manual clock-ins are stored and shown as `MANUAL` ("Unverified (manual)"), never as verified
+- [x] Availability derived from attendance, breaks, and pause records (`deriveAvailability`); clock in/out, pause/resume offers, timed breaks; live roster for managers
+- [x] Pure, seeded planner (`planWave` in `@teampilot/shared`): eligibility with explicit reasons (role, already assigned/offered, pending offer, not available, missing skill, schedule conflict), workload score, FNV-1a tie-break; per-task `dispatch_policy` (include managers, over-offer factor, max offers per wave, max waves)
+- [x] Waves: each round stores seed, policy, ranking, and ineligibility counts for explainability; offers expire after the task's response window
+- [x] Atomic acceptance: task row locked before the offer, capacity checked against committed state, losing offers withdrawn with `CAPACITY_FILLED`; refusals (expired, filled) are committed before the error is returned
+- [x] Declines advance dispatch immediately; the worker sweeps settled rounds every 10s (`DISPATCH_SWEEP_MS`) and sends the next wave or escalates to `NEEDS_MANAGER_ATTENTION` (`NO_ELIGIBLE_CANDIDATES`, `MAX_WAVES_REACHED`) unless the minimum headcount is met
+- [x] Cancelling or rescheduling a task withdraws open offers and cancels running rounds
+- [x] Mobile: availability card and live offers with countdown on Home, dispatch panel with rounds and offers on task detail, live roster in Operations
+- [x] Tests: 18 shared (planner, state machines), 9 dispatch API tests (escalation, availability, concurrent accept, decline, expiry via sweep, paused exclusion)
+- [x] Verified on the hosted project with Upstash Redis: 4 concurrent accepts on a 1-person task produced exactly one winner and three `CAPACITY_FILLED` withdrawals
 
 ### Phase 4: Notifications (not started; schema prepared)
 Expo push registration, durable notification jobs, reminders, rescheduling and cancellation, delivery receipts, in-app notification center.
@@ -97,4 +107,4 @@ None for continuing development. The following are needed to validate against re
 ## Next milestones
 
 1. Add a Postgres service container to CI for multi-connection concurrency tests.
-2. **Phase 3**: dispatch engine as a pure, seeded, unit-tested module plus transactional acceptance (needs a Redis URL for the worker).
+2. **Phase 4**: push notifications for offers and escalations (needs Expo access token, APNs key, FCM service account).

@@ -4,9 +4,17 @@ import { pino } from 'pino';
 import { loadWorkerConfig } from './config';
 import { DEFAULT_JOB_OPTIONS, QUEUES, jobId } from './queues/definitions';
 import { processMaintenance } from './processors/maintenance';
+import { processDispatch } from './processors/dispatch';
+import { createPgDb } from '../../api/src/db/pg';
 
 const config = loadWorkerConfig();
 const logger = pino({ level: config.LOG_LEVEL, base: { service: 'worker' } });
+const db = createPgDb({
+  connectionString: config.DATABASE_URL,
+  ssl: config.DATABASE_SSL,
+  caFile: config.DATABASE_SSL_CA_FILE,
+  max: config.DATABASE_POOL_MAX,
+});
 
 const url = new URL(config.REDIS_URL);
 const connection: ConnectionOptions = {
@@ -19,12 +27,15 @@ const connection: ConnectionOptions = {
 };
 
 const maintenanceQueue = new Queue(QUEUES.maintenance, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
+const dispatchQueue = new Queue(QUEUES.dispatch, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
 
 const workers = [
   new Worker(QUEUES.maintenance, (job) => processMaintenance(job, logger), {
     connection,
     concurrency: config.WORKER_CONCURRENCY,
   }),
+  // Concurrency 1: sweeps lock task rows, so overlapping sweeps would only contend with each other.
+  new Worker(QUEUES.dispatch, (job) => processDispatch(job, db, logger), { connection, concurrency: 1 }),
 ];
 
 for (const w of workers) {
@@ -36,6 +47,11 @@ await maintenanceQueue.upsertJobScheduler(
   jobId('heartbeat'),
   { every: 60_000 },
   { name: 'heartbeat', data: {}, opts: { removeOnComplete: 100, removeOnFail: 100 } },
+);
+await dispatchQueue.upsertJobScheduler(
+  jobId('dispatch-sweep'),
+  { every: config.DISPATCH_SWEEP_MS },
+  { name: 'sweep', data: {}, opts: { attempts: 1, removeOnComplete: 100, removeOnFail: 500 } },
 );
 
 const health = createServer((req, res) => {
@@ -53,7 +69,8 @@ async function shutdown(signal: string) {
   setTimeout(() => process.exit(1), 30_000).unref();
   // Worker.close() waits for in-flight jobs to finish, so restarts do not drop work.
   await Promise.allSettled(workers.map((w) => w.close()));
-  await maintenanceQueue.close();
+  await Promise.allSettled([maintenanceQueue.close(), dispatchQueue.close()]);
+  await db.close();
   health.close();
   process.exit(0);
 }

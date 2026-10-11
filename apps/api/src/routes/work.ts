@@ -15,6 +15,7 @@ import {
 } from '@teampilot/shared';
 import type { AppDeps } from '../app';
 import { requireOrgRole } from '../middleware/org-access';
+import { listOffersForTask, listRoundsForTask } from '../repositories/dispatch';
 import { getEvent, listEvents } from '../repositories/events';
 import { getTask, listAssignmentsForTask, listScheduleForUser, listTasks, listTasksForEvent } from '../repositories/tasks';
 import {
@@ -110,9 +111,16 @@ export function workRouter({ db }: AppDeps): Router {
     const orgId = req.org!.organizationId;
     const task = await getTask(db, orgId, idParam(req.params.taskId, 'Task'));
     if (!task || (task.status === 'DRAFT' && !canSeeDrafts(req))) throw notFound('Task not found');
-    const [assignments, event] = await Promise.all([
+    const [assignments, event, dispatch] = await Promise.all([
       listAssignmentsForTask(db, orgId, task.id),
       task.eventId ? getEvent(db, orgId, task.eventId) : Promise.resolve(null),
+      canSeeDrafts(req)
+        ? Promise.all([listRoundsForTask(db, orgId, task.id), listOffersForTask(db, orgId, task.id)]).then(([rounds, offers]) => ({
+            policy: task.dispatchPolicy,
+            rounds,
+            offers,
+          }))
+        : Promise.resolve(undefined),
     ]);
     res.json({
       data: {
@@ -121,6 +129,7 @@ export function workRouter({ db }: AppDeps): Router {
           ? { id: event.id, title: event.title, startAt: event.startAt, endAt: event.endAt, timezone: event.timezone, status: event.status }
           : null,
         assignments,
+        ...(dispatch ? { dispatch } : {}),
       },
     });
   });

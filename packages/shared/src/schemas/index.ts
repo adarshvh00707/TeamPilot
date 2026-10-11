@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { dispatchPolicyInputSchema } from '../dispatch';
 import { EVENT_STATUSES, MANUAL_TASK_TARGETS, MEMBERSHIP_STATUSES, PRIORITIES, ROLES, TASK_STATUSES } from '../constants/domain';
 
 export function isValidTimeZone(tz: string): boolean {
@@ -142,6 +143,7 @@ export const createTaskSchema = z
     requiredSkills: z.array(skillKeySchema).max(20).default([]),
     instructions: z.string().trim().max(5000).optional(),
     ownerUserId: uuidSchema.optional(),
+    dispatchPolicy: dispatchPolicyInputSchema.optional(),
   })
   .refine((v) => v.minimumRequiredHeadcount === undefined || v.minimumRequiredHeadcount <= v.requiredHeadcount, {
     message: 'Minimum headcount cannot exceed required headcount',
@@ -167,6 +169,7 @@ export const updateTaskSchema = z
     requiredSkills: z.array(skillKeySchema).max(20).optional(),
     instructions: z.string().trim().max(5000).nullable().optional(),
     ownerUserId: uuidSchema.nullable().optional(),
+    dispatchPolicy: dispatchPolicyInputSchema.optional(),
   })
   .refine(nonEmptyPatch, 'At least one field is required');
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
@@ -188,6 +191,22 @@ export const createAssignmentSchema = z.object({
   overrideReason: z.string().trim().min(3).max(500).optional(),
 });
 export type CreateAssignmentInput = z.infer<typeof createAssignmentSchema>;
+
+export const startBreakSchema = z.object({
+  minutes: z.number().int().min(5).max(60).default(15),
+});
+export type StartBreakInput = z.infer<typeof startBreakSchema>;
+
+export const pauseOffersSchema = z.object({
+  reason: z.string().trim().max(200).optional(),
+});
+export type PauseOffersInput = z.infer<typeof pauseOffersSchema>;
+
+export const DECLINE_REASONS = ['NOT_INTERESTED', 'BUSY', 'ON_BREAK', 'UNAVAILABLE', 'LACKS_SKILL', 'OTHER'] as const;
+export const declineOfferSchema = z.object({
+  reason: z.enum(DECLINE_REASONS).default('NOT_INTERESTED'),
+});
+export type DeclineOfferInput = z.infer<typeof declineOfferSchema>;
 
 export const scheduleQuerySchema = z.object({
   from: dateTimeSchema.optional(),

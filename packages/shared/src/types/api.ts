@@ -1,12 +1,16 @@
 import type {
   AssignmentSource,
   AssignmentStatus,
+  AttendanceVerificationStatus,
+  AvailabilityStatus,
   EventStatus,
   MembershipStatus,
+  OfferStatus,
   Priority,
   Role,
   TaskStatus,
 } from '../constants/domain';
+import type { DispatchPolicy } from '../dispatch';
 
 export interface ApiSuccess<T> {
   data: T;
@@ -122,6 +126,7 @@ export interface Task {
   instructions: string | null;
   ownerUserId: string | null;
   createdBy: string | null;
+  dispatchPolicy: DispatchPolicy;
   version: number;
   publishedAt: string | null;
   completedAt: string | null;
@@ -151,10 +156,64 @@ export interface TaskAssignment {
 export interface TaskDetail extends Task {
   event: Pick<Event, 'id' | 'title' | 'startAt' | 'endAt' | 'timezone' | 'status'> | null;
   assignments: TaskAssignment[];
+  /** Present for managers only. */
+  dispatch?: TaskDispatchState;
 }
 
 export interface EventDetail extends Event {
   tasks: Task[];
+}
+
+export interface MyAvailability {
+  status: AvailabilityStatus;
+  verification: AttendanceVerificationStatus;
+  clockedInAt: string | null;
+  paused: boolean;
+  activeBreak: { id: string; startedAt: string; expectedEndAt: string } | null;
+}
+
+export interface RosterEntry extends MyAvailability {
+  userId: string;
+  displayName: string | null;
+  role: Role;
+  activeAssignments: number;
+}
+
+export interface Offer {
+  id: string;
+  taskId: string;
+  userId: string;
+  displayName: string | null;
+  status: OfferStatus;
+  offeredAt: string;
+  expiresAt: string;
+  respondedAt: string | null;
+  responseReason: string | null;
+  roundNumber: number | null;
+}
+
+export interface MyOffer extends Offer {
+  task: Pick<Task, 'id' | 'title' | 'priority' | 'locationName' | 'estimatedDurationMinutes' | 'instructions' | 'completionDeadline'>;
+  event: Pick<Event, 'id' | 'title' | 'startAt' | 'endAt' | 'timezone'> | null;
+}
+
+export interface DispatchRoundSummary {
+  id: string;
+  roundNumber: number;
+  status: 'PENDING' | 'RUNNING' | 'COMPLETED' | 'CANCELLED' | 'FAILED';
+  startedAt: string;
+  completedAt: string | null;
+  requiredPositions: number;
+  eligibleCandidatesCount: number;
+  selectedCount: number;
+  /** Counts of ineligible members by reason, for explaining why nobody (or few) were offered. */
+  ineligibleByReason: Record<string, number>;
+}
+
+export interface TaskDispatchState {
+  policy: DispatchPolicy;
+  rounds: DispatchRoundSummary[];
+  offers: Offer[];
 }
 
 export interface ScheduleItem {

@@ -1,11 +1,13 @@
-import type {
-  AssignmentSource,
-  AssignmentStatus,
-  Priority,
-  ScheduleItem,
-  Task,
-  TaskAssignment,
-  TaskStatus,
+import {
+  parseDispatchPolicy,
+  type AssignmentSource,
+  type AssignmentStatus,
+  type DispatchPolicy,
+  type Priority,
+  type ScheduleItem,
+  type Task,
+  type TaskAssignment,
+  type TaskStatus,
 } from '@teampilot/shared';
 import type { Queryable } from '../db/types';
 import { iso, isoOrNull, type Cursor } from '../utils/pagination';
@@ -30,6 +32,7 @@ interface TaskRow {
   instructions: string | null;
   owner_user_id: string | null;
   created_by: string | null;
+  dispatch_policy: unknown;
   version: number;
   published_at: Date | string | null;
   completed_at: Date | string | null;
@@ -44,7 +47,7 @@ const SELECT = `
   select t.id, t.organization_id, t.event_id, t.title, t.description, t.location_id, l.name as location_name,
          t.status, t.priority, t.estimated_duration_minutes, t.required_headcount, t.minimum_required_headcount,
          t.completion_deadline, t.dispatch_start_at, t.offer_response_window_minutes, t.required_skills,
-         t.instructions, t.owner_user_id, t.created_by, t.version, t.published_at, t.completed_at, t.cancelled_at,
+         t.instructions, t.owner_user_id, t.created_by, t.dispatch_policy, t.version, t.published_at, t.completed_at, t.cancelled_at,
          t.created_at, t.updated_at,
          (select count(*) from task_assignments a
            where a.task_id = t.id and a.status not in ('CANCELLED', 'REASSIGNMENT_REQUIRED')) as assigned_count,
@@ -73,6 +76,7 @@ const toTask = (r: TaskRow): Task => ({
   instructions: r.instructions,
   ownerUserId: r.owner_user_id,
   createdBy: r.created_by,
+  dispatchPolicy: parseDispatchPolicy(r.dispatch_policy),
   version: r.version,
   publishedAt: isoOrNull(r.published_at),
   completedAt: isoOrNull(r.completed_at),
@@ -141,7 +145,10 @@ export interface TaskFields {
   requiredSkills?: string[];
   instructions?: string | null;
   ownerUserId?: string | null;
+  dispatchPolicy?: Partial<DispatchPolicy>;
 }
+
+const toParam = (k: keyof TaskFields, v: unknown) => (k === 'dispatchPolicy' ? JSON.stringify(v) : v);
 
 const FIELD_COLUMNS: Record<keyof TaskFields, string> = {
   eventId: 'event_id',
@@ -158,6 +165,7 @@ const FIELD_COLUMNS: Record<keyof TaskFields, string> = {
   requiredSkills: 'required_skills',
   instructions: 'instructions',
   ownerUserId: 'owner_user_id',
+  dispatchPolicy: 'dispatch_policy',
 };
 
 export async function insertTask(
@@ -166,7 +174,7 @@ export async function insertTask(
 ) {
   const keys = (Object.keys(FIELD_COLUMNS) as Array<keyof TaskFields>).filter((k) => input[k] !== undefined);
   const columns = ['organization_id', 'created_by', ...keys.map((k) => FIELD_COLUMNS[k])];
-  const values = [input.organizationId, input.createdBy, ...keys.map((k) => input[k])];
+  const values = [input.organizationId, input.createdBy, ...keys.map((k) => toParam(k, input[k]))];
   const { rows } = await db.query<{ id: string }>(
     `insert into tasks (${columns.join(', ')}) values (${columns.map((_, i) => `$${i + 1}`).join(', ')}) returning id`,
     values,
@@ -180,7 +188,7 @@ export async function updateTaskFields(db: Queryable, organizationId: string, id
   const sets = keys.map((k, i) => `${FIELD_COLUMNS[k]} = $${i + 3}`);
   await db.query(
     `update tasks set ${[...sets, 'version = version + 1'].join(', ')} where organization_id = $1 and id = $2`,
-    [organizationId, id, ...keys.map((k) => patch[k])],
+    [organizationId, id, ...keys.map((k) => toParam(k, patch[k]))],
   );
   return getTask(db, organizationId, id);
 }

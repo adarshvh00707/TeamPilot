@@ -13,6 +13,7 @@ import { meRouter } from './routes/me';
 import { buildOpenApiDocument } from './routes/openapi';
 import { organizationsRouter } from './routes/organizations';
 import { workRouter } from './routes/work';
+import { dispatchRouter } from './routes/dispatch';
 
 export interface AppDeps {
   db: Db;
@@ -79,6 +80,7 @@ export function createApp(deps: AppDeps): Express {
   v1.use(meRouter(deps));
   v1.use(organizationsRouter(deps));
   v1.use(workRouter(deps));
+  v1.use(dispatchRouter(deps));
   app.use('/api/v1', v1);
 
   app.use(notFoundHandler);

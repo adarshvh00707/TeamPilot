@@ -1,6 +1,8 @@
 import { router } from 'expo-router';
 import { View } from 'react-native';
-import { AppText, Badge, Card, Screen, UnavailableNotice } from '@/components/ui';
+import { AppText, Badge, Card, Screen } from '@/components/ui';
+import { AvailabilityCard } from '@/features/dispatch/AvailabilityCard';
+import { OffersCard } from '@/features/dispatch/OffersCard';
 import { useOrg } from '@/features/org/OrgProvider';
 import { useTheme } from '@/theme';
 
@@ -21,20 +23,13 @@ export default function HomeScreen() {
         ) : null}
       </View>
 
-      <Card>
-        <AppText variant="heading">Availability</AppText>
-        <AppText tone="muted">
-          Status: <AppText variant="label">Unknown</AppText>. No attendance source is connected yet, so TeamPilot does
-          not treat anyone as clocked in.
-        </AppText>
-      </Card>
+      {active ? <OffersCard orgId={active.organizationId} /> : null}
+      {active ? <AvailabilityCard orgId={active.organizationId} /> : null}
 
       <Card onPress={() => router.push('/schedule')} accessibilityLabel="Open my schedule">
         <AppText variant="heading">My schedule</AppText>
         <AppText tone="muted">See and respond to the tasks you are assigned to.</AppText>
       </Card>
-
-      <UnavailableNotice feature="Automatic task offers and break controls" phase="Phase 3" />
 
       {isManager ? (
         <Card onPress={() => router.push('/operations')} accessibilityLabel="Open manager operations">
