@@ -74,15 +74,17 @@ npm-workspaces monorepo: Expo SDK 57 mobile app, Express 5 API, BullMQ worker, s
 - [x] Tests: 18 shared (planner, state machines), 9 dispatch API tests (escalation, availability, concurrent accept, decline, expiry via sweep, paused exclusion)
 - [x] Verified on the hosted project with Upstash Redis: 4 concurrent accepts on a 1-person task produced exactly one winner and three `CAPACITY_FILLED` withdrawals
 
-### Phase 4: Notifications (core complete)
+### Phase 4: Notifications (complete; physical-device check pending)
 
 - [x] Expo project `@sma267/teampilot-ai` linked; devices register Expo push tokens (`POST /me/devices`) and revoke on sign-out
 - [x] Transactional outbox: offer, manual-assignment, and escalation events write an in-app notification and a push job in the same transaction, with idempotency keys
 - [x] Worker sends due jobs every 5s via the Expo push API (claimed with `SKIP LOCKED`, stuck jobs recovered), retries transport/rate-limit errors with exponential backoff (5 attempts), marks `DeviceNotRegistered` tokens invalid, cancels offer pushes once the offer is no longer open, and confirms delivery from Expo receipts every 15 minutes
 - [x] Per-type push opt-out via `notificationPreferences` (in-app is always kept)
 - [x] Mobile: in-app inbox with unread state and mark read, push preference switches, tapping a push opens the related screen
-- [x] Tests: 9 notification tests with a fake push sender; verified on hosted Postgres (worker claimed and settled real jobs)
-- [ ] Scheduled reminders before task start, and notifications for schedule changes and cancellations
+- [x] "Starting soon" reminders `REMINDER_LEAD_MINUTES` (default 30) before the event/task start, swept every minute; keyed on the start time so a rescheduled task gets a fresh reminder, and dropped at send time if the assignment was cancelled
+- [x] Schedule-change notices to live assignees when a task's start, deadline, location, event, or instructions change, or a published event's time or location changes (the editor is not notified)
+- [x] Cancellation notices to everyone removed when a task or its event is cancelled
+- [x] Tests: 13 notification tests with a fake push sender; verified on hosted Postgres (worker claimed and settled real jobs; reminder sweep runs clean)
 - [ ] End-to-end push on a physical device (iOS Expo Go works; Android needs a development build because Expo Go on Android no longer supports remote push)
 
 ### Phases 5–7: Not started
@@ -115,5 +117,5 @@ None for continuing development. The following are needed to validate against re
 ## Next milestones
 
 1. Add a Postgres service container to CI for multi-connection concurrency tests.
-2. Finish Phase 4: task reminders and change/cancellation notifications; verify push on a physical device.
+2. Verify push on a physical device.
 3. **Phase 5**: AI features (needs an LLM provider API key).

@@ -32,7 +32,8 @@ import {
   updateTaskFields,
 } from '../repositories/tasks';
 import { badRequest, conflict, forbidden, notFound } from '../utils/errors';
-import { notifyAssignment } from './notifications';
+import { listLiveAssignees } from '../repositories/notifications';
+import { notifyAssignment, notifyScheduleChange, notifyTaskCancelled } from './notifications';
 
 export interface Actor {
   organizationId: string;
@@ -91,6 +92,22 @@ export async function editEvent(db: Db, actor: Actor, eventId: string, input: Up
     if (Date.parse(endAt) <= Date.parse(startAt)) throw badRequest('End must be after start');
     await assertLocation(tx, actor.organizationId, input.locationId);
     const updated = (await updateEvent(tx, actor.organizationId, eventId, input))!;
+    const changed = [
+      updated.startAt !== current.startAt || updated.endAt !== current.endAt
+        ? `now ${formatInZone(updated.startAt, updated.timezone)} to ${formatInZone(updated.endAt, updated.timezone)}`
+        : null,
+      updated.locationId !== current.locationId ? `location is now ${updated.locationName ?? 'unset'}` : null,
+    ].filter(Boolean);
+    if (changed.length && current.status !== 'DRAFT') {
+      await notifyScheduleChange(
+        tx,
+        actor.organizationId,
+        await listLiveAssignees(tx, actor.organizationId, { eventId }),
+        `${updated.title} ${changed.join('; ')}.`,
+        `event:${eventId}:${updated.updatedAt}`,
+        actor.actorUserId,
+      );
+    }
     await writeAudit(tx, {
       organizationId: actor.organizationId,
       actorUserId: actor.actorUserId,
@@ -114,8 +131,9 @@ export async function transitionEvent(db: Db, actor: Actor, eventId: string, to:
       for (const t of await listOpenTaskIdsForEvent(tx, actor.organizationId, eventId)) {
         await withdrawOpenOffers(tx, actor.organizationId, t.id, 'TASK_CANCELLED');
         await cancelRunningRounds(tx, t.id);
-        await cancelLiveAssignments(tx, actor.organizationId, t.id);
+        const affected = await cancelLiveAssignments(tx, actor.organizationId, t.id);
         await setTaskStatus(tx, actor.organizationId, t.id, 'CANCELLED');
+        await notifyTaskCancelled(tx, { ...t, organizationId: actor.organizationId }, affected, actor.actorUserId, `${current.title} was cancelled`);
         cancelledTasks++;
       }
     }
@@ -182,6 +200,18 @@ export async function syncStaffing(tx: Queryable, organizationId: string, taskId
   return (await setTaskStatus(tx, organizationId, taskId, target))!;
 }
 
+/** Edits that change when, where, or how someone works; assignees are told about these. */
+const SCHEDULE_FIELDS = [
+  ['dispatchStartAt', 'Start time'],
+  ['completionDeadline', 'Deadline'],
+  ['locationId', 'Location'],
+  ['eventId', 'Event'],
+  ['instructions', 'Instructions'],
+] as const satisfies ReadonlyArray<readonly [keyof Task, string]>;
+
+const formatInZone = (iso: string, timeZone: string) =>
+  new Intl.DateTimeFormat('en-US', { weekday: 'short', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', timeZone }).format(new Date(iso));
+
 export async function editTask(db: Db, actor: Actor, taskId: string, input: UpdateTaskInput) {
   const { expectedVersion, ...patch } = input;
   return db.transaction(async (tx) => {
@@ -197,6 +227,17 @@ export async function editTask(db: Db, actor: Actor, taskId: string, input: Upda
     await assertMember(tx, actor.organizationId, patch.ownerUserId, 'Owner');
     await updateTaskFields(tx, actor.organizationId, taskId, patch);
     const updated = await syncStaffing(tx, actor.organizationId, taskId);
+    const changed = SCHEDULE_FIELDS.filter(([field]) => field in patch && updated[field] !== current[field]).map(([, label]) => label);
+    if (changed.length) {
+      await notifyScheduleChange(
+        tx,
+        actor.organizationId,
+        await listLiveAssignees(tx, actor.organizationId, { taskId }),
+        `${changed.join(', ')} changed.`,
+        `task:${taskId}:${updated.version}`,
+        actor.actorUserId,
+      );
+    }
     await writeAudit(tx, {
       organizationId: actor.organizationId,
       actorUserId: actor.actorUserId,
@@ -224,7 +265,10 @@ export async function transitionTask(db: Db, actor: Actor, taskId: string, to: T
       await withdrawOpenOffers(tx, actor.organizationId, taskId, to === 'CANCELLED' ? 'TASK_CANCELLED' : 'TASK_CHANGED');
       await cancelRunningRounds(tx, taskId);
     }
-    if (to === 'CANCELLED') await cancelLiveAssignments(tx, actor.organizationId, taskId);
+    if (to === 'CANCELLED') {
+      const affected = await cancelLiveAssignments(tx, actor.organizationId, taskId);
+      await notifyTaskCancelled(tx, current, affected, actor.actorUserId);
+    }
     let updated = (await setTaskStatus(tx, actor.organizationId, taskId, to))!;
     if (to === 'SCHEDULED') updated = await syncStaffing(tx, actor.organizationId, taskId);
     await writeAudit(tx, {

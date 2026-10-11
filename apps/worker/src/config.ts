@@ -10,6 +10,7 @@ const envSchema = z.object({
   DATABASE_POOL_MAX: z.coerce.number().int().min(1).max(100).default(5),
   /** Only needed when "enhanced push security" is enabled on the Expo project. */
   EXPO_ACCESS_TOKEN: z.string().optional(),
+  REMINDER_LEAD_MINUTES: z.coerce.number().int().min(5).max(24 * 60).default(30),
   NOTIFICATION_SWEEP_MS: z.coerce.number().int().min(1_000).max(300_000).default(5_000),
   DISPATCH_SWEEP_MS: z.coerce.number().int().min(1_000).max(300_000).default(10_000),
   WORKER_CONCURRENCY: z.coerce.number().int().min(1).max(64).default(5),

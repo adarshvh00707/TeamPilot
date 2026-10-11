@@ -3,7 +3,9 @@ import type { Db, Queryable } from '../db/types';
 import {
   claimDueJobs,
   enqueueNotification,
+  findDueReminders,
   finishJob,
+  reminderKey,
   insertLog,
   listActiveTokens,
   listManagerIds,
@@ -63,6 +65,74 @@ export async function notifyEscalation(tx: Queryable, task: Task, reason: string
       idempotencyKey: `escalation:${escalationId}:${userId}`,
     });
   }
+}
+
+export async function notifyTaskCancelled(
+  tx: Queryable,
+  task: Pick<Task, 'id' | 'organizationId' | 'title'>,
+  userIds: string[],
+  actorUserId: string,
+  because?: string,
+) {
+  for (const userId of new Set(userIds)) {
+    if (userId === actorUserId) continue;
+    await enqueueNotification(tx, {
+      organizationId: task.organizationId,
+      userId,
+      type: 'TASK_CANCELLED',
+      title: 'Task cancelled',
+      body: `${task.title} was cancelled${because ? ` because ${because}` : ''}. You no longer need to do it.`,
+      data: { url: `/tasks/${task.id}`, taskId: task.id },
+      taskId: task.id,
+      idempotencyKey: `cancelled:${task.id}:${userId}`,
+    });
+  }
+}
+
+/** `changeKey` must identify this particular change (e.g. task version, event updated_at). */
+export async function notifyScheduleChange(
+  tx: Queryable,
+  organizationId: string,
+  changes: Array<{ taskId: string; title: string; userId: string }>,
+  summary: string,
+  changeKey: string,
+  actorUserId: string,
+) {
+  for (const c of changes) {
+    if (c.userId === actorUserId) continue;
+    await enqueueNotification(tx, {
+      organizationId,
+      userId: c.userId,
+      type: 'SCHEDULE_CHANGE',
+      title: 'Task updated',
+      body: `${c.title}: ${summary}`,
+      data: { url: `/tasks/${c.taskId}`, taskId: c.taskId },
+      taskId: c.taskId,
+      idempotencyKey: `change:${changeKey}:${c.taskId}:${c.userId}`,
+    });
+  }
+}
+
+/** Enqueues "starting soon" reminders. Runs on a schedule; safe to repeat. */
+export async function sweepReminders(db: Db, leadMinutes: number) {
+  const due = await findDueReminders(db, leadMinutes);
+  let created = 0;
+  for (const r of due) {
+    const time = new Intl.DateTimeFormat('en-US', { hour: 'numeric', minute: '2-digit', timeZone: r.timezone }).format(new Date(r.startAt));
+    const id = await enqueueNotification(db, {
+      organizationId: r.organizationId,
+      userId: r.userId,
+      type: 'ASSIGNMENT_REMINDER',
+      title: 'Starting soon',
+      body: `${r.title} starts at ${time}${r.locationName ? ` · ${r.locationName}` : ''}.`,
+      data: { url: `/tasks/${r.taskId}`, taskId: r.taskId },
+      taskId: r.taskId,
+      assignmentId: r.assignmentId,
+      idempotencyKey: reminderKey(r.assignmentId, r.startAt),
+    });
+    if (id) created++;
+  }
+  return { due: due.length, created };
 }
 
 // ---- Delivery (worker) ----

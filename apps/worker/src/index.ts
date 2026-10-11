@@ -40,7 +40,7 @@ const workers = [
   }),
   // Concurrency 1: sweeps lock task rows, so overlapping sweeps would only contend with each other.
   new Worker(QUEUES.dispatch, (job) => processDispatch(job, db, logger), { connection, concurrency: 1 }),
-  new Worker(QUEUES.notifications, (job) => processNotifications(job, db, pushSender, logger), { connection, concurrency: 1 }),
+  new Worker(QUEUES.notifications, (job) => processNotifications(job, db, pushSender, logger, config.REMINDER_LEAD_MINUTES), { connection, concurrency: 1 }),
 ];
 
 for (const w of workers) {
@@ -62,6 +62,11 @@ await notificationsQueue.upsertJobScheduler(
   jobId('push-send'),
   { every: config.NOTIFICATION_SWEEP_MS },
   { name: 'send', data: {}, opts: { attempts: 1, removeOnComplete: 100, removeOnFail: 500 } },
+);
+await notificationsQueue.upsertJobScheduler(
+  jobId('reminders'),
+  { every: 60_000 },
+  { name: 'reminders', data: {}, opts: { attempts: 1, removeOnComplete: 100, removeOnFail: 500 } },
 );
 await notificationsQueue.upsertJobScheduler(
   jobId('push-receipts'),

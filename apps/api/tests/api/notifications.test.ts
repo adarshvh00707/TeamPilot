@@ -1,6 +1,6 @@
 import request from 'supertest';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { checkPushReceipts, processNotificationJobs, type PushMessage, type PushSender, type PushTicket } from '../../src/services/notifications';
+import { checkPushReceipts, processNotificationJobs, sweepReminders, type PushMessage, type PushSender, type PushTicket } from '../../src/services/notifications';
 import { createTestApp, tokenFor } from '../helpers/test-app';
 
 type Ctx = Awaited<ReturnType<typeof createTestApp>>;
@@ -132,10 +132,9 @@ describe('producers and delivery', () => {
 
   it('respects push opt-out but keeps the in-app notification', async () => {
     expect((await root('ben').patch('/me', { notificationPreferences: { TASK_ASSIGNED: false } })).status).toBe(200);
-    const before = (await jobsFor(users.ben!.id)).length;
     const id = await scheduledTask();
     await api('manager').post(`/tasks/${id}/assignments`, { userId: users.ben!.id });
-    expect((await jobsFor(users.ben!.id)).length).toBe(before);
+    expect((await jobsFor(users.ben!.id)).at(-1)).toMatchObject({ status: 'CANCELLED', last_error: 'OPTED_OUT' });
     expect((await api('ben').get('/notifications')).body.data[0].type).toBe('TASK_ASSIGNED');
   });
 
@@ -160,6 +159,57 @@ describe('producers and delivery', () => {
     expect((await checkPushReceipts(ctx.db, fakeSender())).checked).toBeGreaterThan(0);
     const { rows } = await ctx.pg.query<{ n: number }>(`select count(*)::int as n from notification_logs where status = 'DELIVERED'`);
     expect(rows[0]!.n).toBeGreaterThan(0);
+  });
+});
+
+describe('changes and reminders', () => {
+  const inMinutes = (m: number) => new Date(Date.now() + m * 60_000).toISOString();
+  const latest = async (key: string) => (await api(key).get('/notifications')).body.data[0];
+
+  it('tells assignees about schedule changes, but not the editor', async () => {
+    const id = await scheduledTask();
+    await api('manager').post(`/tasks/${id}/assignments`, { userId: users.ana!.id });
+    const edit = await api('manager').patch(`/tasks/${id}`, { instructions: 'Use the side door' });
+    expect(edit.status).toBe(200);
+    expect(await latest('ana')).toMatchObject({ type: 'SCHEDULE_CHANGE', body: 'Clear tables: Instructions changed.' });
+    expect((await latest('manager')).type).not.toBe('SCHEDULE_CHANGE');
+
+    await api('manager').patch(`/tasks/${id}`, { title: 'Clear all tables' });
+    expect((await latest('ana')).type).toBe('SCHEDULE_CHANGE');
+    expect((await api('ana').get('/notifications')).body.data.filter((n: { type: string }) => n.type === 'SCHEDULE_CHANGE')).toHaveLength(1);
+  });
+
+  it('tells assignees when a task is cancelled', async () => {
+    const id = await scheduledTask();
+    await api('manager').post(`/tasks/${id}/assignments`, { userId: users.ana!.id });
+    await api('manager').post(`/tasks/${id}/transition`, { status: 'CANCELLED' });
+    expect(await latest('ana')).toMatchObject({ type: 'TASK_CANCELLED', data: { taskId: id } });
+  });
+
+  it('sends one reminder per start time and a fresh one after rescheduling', async () => {
+    const id = await scheduledTask({ dispatchStartAt: inMinutes(20) });
+    await api('manager').post(`/tasks/${id}/assignments`, { userId: users.ana!.id });
+    const before = (await jobsFor(users.ana!.id)).length;
+
+    expect(await sweepReminders(ctx.db, 30)).toMatchObject({ created: 1 });
+    expect((await latest('ana')).type).toBe('ASSIGNMENT_REMINDER');
+    expect(await sweepReminders(ctx.db, 30)).toMatchObject({ created: 0 });
+
+    await api('manager').patch(`/tasks/${id}`, { dispatchStartAt: inMinutes(25) });
+    expect(await sweepReminders(ctx.db, 30)).toMatchObject({ created: 1 });
+    expect((await jobsFor(users.ana!.id)).length).toBe(before + 3); // reminder, change notice, new reminder
+  });
+
+  it('drops a queued reminder if the assignment is cancelled before sending', async () => {
+    const id = await scheduledTask({ dispatchStartAt: inMinutes(10) });
+    const a = await api('manager').post(`/tasks/${id}/assignments`, { userId: users.ben!.id });
+    await processNotificationJobs(ctx.db, fakeSender());
+    await sweepReminders(ctx.db, 30);
+    await api('manager').post(`/assignments/${a.body.data.id}/cancel`);
+    await root('ben').post('/me/devices', { pushToken: pushToken('ben'), platform: 'android' });
+    const sender = fakeSender();
+    await processNotificationJobs(ctx.db, sender);
+    expect(sender.sent).toHaveLength(0);
   });
 });
 

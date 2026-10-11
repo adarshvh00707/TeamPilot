@@ -206,8 +206,8 @@ export async function setTaskStatus(db: Queryable, organizationId: string, id: s
 }
 
 export async function listOpenTaskIdsForEvent(db: Queryable, organizationId: string, eventId: string) {
-  const { rows } = await db.query<{ id: string; status: TaskStatus }>(
-    `select id, status from tasks where organization_id = $1 and event_id = $2
+  const { rows } = await db.query<{ id: string; title: string; status: TaskStatus }>(
+    `select id, title, status from tasks where organization_id = $1 and event_id = $2
        and status not in ('COMPLETED', 'CANCELLED') for update`,
     [organizationId, eventId],
   );

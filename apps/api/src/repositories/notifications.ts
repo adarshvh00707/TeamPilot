@@ -50,13 +50,18 @@ export interface NotificationInput {
 
 /**
  * Transactional outbox: the in-app row and the push job are written in the caller's transaction, so a
- * notification exists if and only if the change that caused it committed.
+ * notification exists if and only if the change that caused it committed. The job row doubles as the
+ * idempotency record: a repeated key writes nothing, and a push the user opted out of is stored as CANCELLED.
  */
 export async function enqueueNotification(db: Queryable, n: NotificationInput) {
   const { rows } = await db.query<{ id: string }>(
-    `insert into notification_jobs (organization_id, task_id, assignment_id, offer_id, user_id, notification_type, payload, scheduled_at, idempotency_key)
-     select $1, $2, $3, $4, $5, $6, $7, now(), $8
-     where coalesce((select (notification_preferences ->> $6)::boolean from profiles where id = $5), true)
+    `insert into notification_jobs (organization_id, task_id, assignment_id, offer_id, user_id, notification_type, payload,
+                                    scheduled_at, idempotency_key, status, last_error, cancelled_at)
+     select $1, $2, $3, $4, $5, $6, $7, now(), $8,
+            case when opted_in then 'QUEUED' else 'CANCELLED' end,
+            case when opted_in then null else 'OPTED_OUT' end,
+            case when opted_in then null else now() end
+     from (select coalesce((select (notification_preferences ->> $6)::boolean from profiles where id = $5), true) as opted_in) p
      on conflict (idempotency_key) do nothing
      returning id`,
     [
@@ -70,13 +75,85 @@ export async function enqueueNotification(db: Queryable, n: NotificationInput) {
       n.idempotencyKey,
     ],
   );
+  if (!rows[0]) return null;
   await db.query(
     `insert into in_app_notifications (organization_id, user_id, notification_type, title, body, data)
      values ($1, $2, $3, $4, $5, $6)`,
     [n.organizationId, n.userId, n.type, n.title, n.body, JSON.stringify(n.data)],
   );
-  return rows[0]?.id ?? null;
+  return rows[0].id;
 }
+
+/** People currently on a task, or on any open task of an event. */
+export async function listLiveAssignees(db: Queryable, organizationId: string, scope: { taskId: string } | { eventId: string }) {
+  const { rows } = await db.query<{ task_id: string; title: string; user_id: string }>(
+    `select t.id as task_id, t.title, a.user_id from task_assignments a join tasks t on t.id = a.task_id
+     where a.organization_id = $1 and a.status in ('ASSIGNED', 'ACCEPTED', 'IN_PROGRESS')
+       and t.status not in ('COMPLETED', 'CANCELLED')
+       and ${'taskId' in scope ? 't.id = $2' : 't.event_id = $2'}`,
+    [organizationId, 'taskId' in scope ? scope.taskId : scope.eventId],
+  );
+  return rows.map((r) => ({ taskId: r.task_id, title: r.title, userId: r.user_id }));
+}
+
+export interface DueReminder {
+  organizationId: string;
+  assignmentId: string;
+  userId: string;
+  taskId: string;
+  title: string;
+  startAt: string;
+  timezone: string;
+  locationName: string | null;
+}
+
+/**
+ * Live assignments whose task starts within the lead window and that have no reminder for this start time yet.
+ * Keying on the start time means a rescheduled task gets a fresh reminder.
+ */
+export async function findDueReminders(db: Queryable, leadMinutes: number, limit = 200): Promise<DueReminder[]> {
+  const { rows } = await db.query<{
+    organization_id: string;
+    assignment_id: string;
+    user_id: string;
+    task_id: string;
+    title: string;
+    start_at: Date | string;
+    timezone: string;
+    location_name: string | null;
+  }>(
+    `select * from (
+       select a.organization_id, a.id as assignment_id, a.user_id, t.id as task_id, t.title,
+              coalesce(e.start_at, t.dispatch_start_at) as start_at,
+              coalesce(e.timezone, o.timezone) as timezone,
+              coalesce(tl.name, el.name) as location_name
+       from task_assignments a
+       join tasks t on t.id = a.task_id
+       join organizations o on o.id = a.organization_id
+       left join events e on e.id = t.event_id
+       left join locations tl on tl.id = t.location_id
+       left join locations el on el.id = e.location_id
+       where a.status in ('ASSIGNED', 'ACCEPTED') and t.status not in ('CANCELLED', 'COMPLETED')
+     ) r
+     where r.start_at > now() and r.start_at <= now() + make_interval(mins => $1::int)
+       and not exists (select 1 from notification_jobs j
+                       where j.idempotency_key = 'reminder:' || r.assignment_id || ':' || floor(extract(epoch from r.start_at))::bigint)
+     limit $2`,
+    [leadMinutes, limit],
+  );
+  return rows.map((r) => ({
+    organizationId: r.organization_id,
+    assignmentId: r.assignment_id,
+    userId: r.user_id,
+    taskId: r.task_id,
+    title: r.title,
+    startAt: new Date(r.start_at).toISOString(),
+    timezone: r.timezone,
+    locationName: r.location_name,
+  }));
+}
+
+export const reminderKey = (assignmentId: string, startAt: string) => `reminder:${assignmentId}:${Math.floor(Date.parse(startAt) / 1000)}`;
 
 export async function listManagerIds(db: Queryable, organizationId: string) {
   const { rows } = await db.query<{ user_id: string }>(
@@ -171,7 +248,9 @@ export async function claimDueJobs(db: Queryable, limit = 50): Promise<ClaimedJo
      from due where j.id = due.id
      returning j.id, j.organization_id, j.user_id, j.notification_type, j.payload, j.attempt_count,
        (j.offer_id is null or exists (select 1 from task_offers o where o.id = j.offer_id
-                                      and o.offer_status = 'OFFERED' and o.expires_at > now())) as still_relevant`,
+                                      and o.offer_status = 'OFFERED' and o.expires_at > now()))
+       and (j.assignment_id is null or exists (select 1 from task_assignments a where a.id = j.assignment_id
+                                               and a.status in ('ASSIGNED', 'ACCEPTED', 'IN_PROGRESS'))) as still_relevant`,
     [limit],
   );
   return rows.map((r) => ({
