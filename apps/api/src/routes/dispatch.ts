@@ -3,6 +3,7 @@ import { declineOfferSchema, pauseOffersSchema, startBreakSchema, uuidSchema } f
 import type { AppDeps } from '../app';
 import { requireOrgRole } from '../middleware/org-access';
 import { loadMemberSignals } from '../repositories/attendance';
+import { getManagerDashboard } from '../repositories/dashboard';
 import { listOpenOffersForUser } from '../repositories/dispatch';
 import { changeMyAvailability, getMyAvailability } from '../services/availability';
 import { acceptOffer, declineOffer, startDispatch, stopDispatch } from '../services/dispatch';
@@ -58,6 +59,10 @@ export function dispatchRouter({ db }: AppDeps): Router {
     res.json({
       data: rows.map((m) => ({ userId: m.userId, displayName: m.displayName, role: m.role, activeAssignments: m.activeAssignments, ...m.availability })),
     });
+  });
+
+  r.get(`${ORG}/dashboard`, manager, async (req, res) => {
+    res.json({ data: await getManagerDashboard(db, req.org!.organizationId) });
   });
 
   // Offers

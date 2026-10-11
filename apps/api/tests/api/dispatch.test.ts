@@ -179,6 +179,17 @@ describe('offers', () => {
     await api('manager').post(`/tasks/${id}/dispatch/stop`);
   });
 
+  it('summarizes operations on the manager dashboard', async () => {
+    const res = await api('manager').get('/dashboard');
+    expect(res.status).toBe(200);
+    expect(res.body.data.people).toMatchObject({ staff: 3 });
+    expect(res.body.data.offers.sentLast7Days).toBeGreaterThan(0);
+    expect(res.body.data.offers.acceptedLast7Days).toBeGreaterThanOrEqual(1);
+    expect(res.body.data.completedByDay).toHaveLength(7);
+    expect(res.body.data.staffing.needsAttention).toBeGreaterThanOrEqual(1);
+    expect((await api('ana').get('/dashboard')).status).toBe(403);
+  });
+
   it('excludes paused members from waves', async () => {
     await api('ana').post('/me/pause');
     await api('ben').post('/me/clock-out');

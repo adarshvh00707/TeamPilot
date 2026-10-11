@@ -9,10 +9,11 @@ import { formatTime, humanize } from './format';
 
 const isToday = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
 
-function Row({ item }: { item: ScheduleItem }) {
+export function ScheduleRow({ item }: { item: ScheduleItem }) {
   const { colors, spacing, radius } = useTheme();
   const Icon = item.assignment.status === 'IN_PROGRESS' ? PlayCircle : item.assignment.status === 'ACCEPTED' ? ClipboardCheck : Timer;
   const live = item.assignment.status === 'IN_PROGRESS';
+  const done = item.assignment.status === 'COMPLETED';
   return (
     <Pressable
       accessibilityRole="button"
@@ -25,6 +26,7 @@ function Row({ item }: { item: ScheduleItem }) {
         backgroundColor: colors.surface,
         borderRadius: radius.lg,
         padding: spacing.md,
+        opacity: done ? 0.6 : 1,
         transform: [{ scale: pressed ? 0.98 : 1 }],
       })}
     >
@@ -62,7 +64,7 @@ export function TodayList({ orgId }: { orgId: string }) {
       {!schedule.isPending && !items.length ? (
         <AppText tone="muted">Nothing scheduled for you today.</AppText>
       ) : null}
-      {items.map((i) => <Row key={i.assignment.id} item={i} />)}
+      {items.map((i) => <ScheduleRow key={i.assignment.id} item={i} />)}
     </View>
   );
 }

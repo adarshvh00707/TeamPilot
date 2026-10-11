@@ -123,12 +123,18 @@ export function useAssignmentAction(orgId: string) {
   });
 }
 
-export function useSchedule(orgId: string) {
+/** Without a range: from yesterday onward, open work only. With a range: everything in it, including completed. */
+export function useSchedule(orgId: string, range?: { from: Date; to: Date }) {
   return useQuery({
-    queryKey: workKeys.schedule(orgId),
+    queryKey: [...workKeys.schedule(orgId), range?.from.toISOString() ?? 'upcoming'],
     queryFn: async () => {
-      const from = new Date(Date.now() - 86_400_000).toISOString();
-      return (await api.get<ScheduleItem[]>(`/organizations/${orgId}/schedule?from=${encodeURIComponent(from)}`)).data;
+      const qs = new URLSearchParams(
+        range
+          ? { from: range.from.toISOString(), to: range.to.toISOString(), includeCompleted: 'true' }
+          : { from: new Date(Date.now() - 86_400_000).toISOString() },
+      );
+      return (await api.get<ScheduleItem[]>(`/organizations/${orgId}/schedule?${qs.toString()}`)).data;
     },
+    placeholderData: (prev) => prev,
   });
 }

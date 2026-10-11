@@ -10,7 +10,7 @@ const STARTABLE: TaskStatus[] = ['SCHEDULED', 'PARTIALLY_STAFFED', 'NEEDS_MANAGE
 const offerTone = (s: string) => (s === 'ACCEPTED' ? 'success' : s === 'OFFERED' ? 'warning' : 'neutral');
 
 export function DispatchPanel({ orgId, task }: { orgId: string; task: TaskDetail }) {
-  const { spacing } = useTheme();
+  const { colors, spacing, scale } = useTheme();
   const control = useDispatchControl(orgId, task.id);
   const d = task.dispatch;
   if (!d) return null;
@@ -31,8 +31,23 @@ export function DispatchPanel({ orgId, task }: { orgId: string; task: TaskDetail
       {running ? <Button label="Stop dispatch" variant="secondary" loading={control.isPending} onPress={() => control.mutate('stop')} /> : null}
       {control.error ? <ErrorState message={errorMessage(control.error)} /> : null}
 
-      {d.rounds.map((r) => (
-        <View key={r.id} style={{ gap: spacing.xs, paddingVertical: spacing.xs }}>
+      {d.rounds.map((r, i) => (
+        <View key={r.id} style={{ flexDirection: 'row', gap: spacing.md }}>
+          <View style={{ alignItems: 'center', width: 14 }}>
+            <View
+              style={{
+                width: 14,
+                height: 14,
+                borderRadius: 7,
+                marginTop: 3,
+                backgroundColor: r.status === 'RUNNING' ? colors.ink : r.status === 'FAILED' ? scale.low : colors.surfaceMuted,
+                borderWidth: r.status === 'RUNNING' ? 3 : 0,
+                borderColor: colors.surfaceMuted,
+              }}
+            />
+            {i < d.rounds.length - 1 ? <View style={{ flex: 1, width: 2, backgroundColor: colors.surfaceMuted, marginTop: 2 }} /> : null}
+          </View>
+        <View style={{ flex: 1, gap: spacing.xs, paddingBottom: spacing.md }}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
             <AppText variant="label">Wave {r.roundNumber} · {formatTime(r.startedAt)}</AppText>
             <Badge label={humanize(r.status)} tone={r.status === 'FAILED' ? 'danger' : r.status === 'RUNNING' ? 'info' : 'neutral'} />
@@ -51,6 +66,7 @@ export function DispatchPanel({ orgId, task }: { orgId: string; task: TaskDetail
                 <Badge label={humanize(o.status)} tone={offerTone(o.status)} />
               </View>
             ))}
+        </View>
         </View>
       ))}
     </Card>

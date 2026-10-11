@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { MyAvailability, MyOffer, RosterEntry } from '@teampilot/shared';
+import type { ManagerDashboard, MyAvailability, MyOffer, RosterEntry } from '@teampilot/shared';
 import { api } from '@/lib/api';
 import { workKeys } from '@/features/work/api';
 
@@ -42,6 +42,14 @@ export function useRespondToOffer(orgId: string) {
     mutationFn: async ({ id, action }: { id: string; action: 'accept' | 'decline' }) =>
       (await api.post(`/organizations/${orgId}/offers/${id}/${action}`, {})).data,
     onSettled: () => qc.invalidateQueries({ queryKey: workKeys.all(orgId) }),
+  });
+}
+
+export function useDashboard(orgId: string) {
+  return useQuery({
+    queryKey: ['org', orgId, 'work', 'dashboard'],
+    queryFn: async () => (await api.get<ManagerDashboard>(`/organizations/${orgId}/dashboard`)).data,
+    refetchInterval: 30_000,
   });
 }
 

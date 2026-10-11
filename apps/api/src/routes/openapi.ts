@@ -78,6 +78,7 @@ const operations: Operation[] = [
     tag: 'Availability',
     minRole: 'STAFF' as const,
   })),
+  { method: 'get', path: `${ORG}/dashboard`, summary: 'Manager dashboard: staffing, offers, people, 7-day completions', tag: 'Availability', minRole: 'MANAGER' },
   { method: 'get', path: `${ORG}/roster`, summary: 'Live roster with availability', tag: 'Availability', minRole: 'MANAGER' },
   { method: 'get', path: `${ORG}/me/offers`, summary: 'My open task offers', tag: 'Dispatch', minRole: 'STAFF' },
   { method: 'post', path: `${ORG}/offers/{offerId}/accept`, summary: 'Accept an offer (first come, first served)', tag: 'Dispatch', minRole: 'STAFF' },

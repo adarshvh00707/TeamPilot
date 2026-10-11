@@ -1,12 +1,16 @@
 import { router } from 'expo-router';
 import { Activity, CalendarDays, ChevronRight, MapPin, Users } from 'lucide-react-native';
 import { View } from 'react-native';
-import { AppText, Card, ErrorState, Screen, UnavailableNotice } from '@/components/ui';
-import { useOrg } from '@/features/org/OrgProvider';
+import { AppText, Card, ErrorState, Screen } from '@/components/ui';
+import { Dashboard } from '@/features/dispatch/Dashboard';
+import { useActiveOrgId, useOrg } from '@/features/org/OrgProvider';
 import { useTheme } from '@/theme';
+
+type Href = '/team' | '/locations' | '/events' | '/roster';
 
 export default function OperationsScreen() {
   const { isManager } = useOrg();
+  const orgId = useActiveOrgId();
   const { colors, spacing } = useTheme();
 
   if (!isManager) {
@@ -17,26 +21,27 @@ export default function OperationsScreen() {
     );
   }
 
-  const Row = ({ icon, title, subtitle, href }: { icon: React.ReactNode; title: string; subtitle: string; href: '/team' | '/locations' | '/events' | '/roster' }) => (
-    <Card onPress={() => router.push(href)} accessibilityLabel={title}>
+  const Row = ({ icon, title, subtitle, href }: { icon: React.ReactNode; title: string; subtitle: string; href: Href }) => (
+    <Card onPress={() => router.push(href)} accessibilityLabel={title} style={{ paddingVertical: spacing.md }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-        {icon}
+        <View style={{ width: 44, height: 44, borderRadius: 22, backgroundColor: colors.surfaceMuted, alignItems: 'center', justifyContent: 'center' }}>{icon}</View>
         <View style={{ flex: 1 }}>
-          <AppText variant="heading">{title}</AppText>
-          <AppText tone="muted">{subtitle}</AppText>
+          <AppText variant="label">{title}</AppText>
+          <AppText variant="caption" tone="muted">{subtitle}</AppText>
         </View>
-        <ChevronRight color={colors.textMuted} />
+        <ChevronRight color={colors.textMuted} size={18} />
       </View>
     </Card>
   );
 
   return (
     <Screen>
-      <Row icon={<CalendarDays color={colors.primary} />} title="Events" subtitle="Plan events, publish them, and add tasks" href="/events" />
-      <Row icon={<Activity color={colors.primary} />} title="Live roster" subtitle="Who is clocked in, on break, or paused" href="/roster" />
-      <Row icon={<Users color={colors.primary} />} title="Team" subtitle="Members, roles, and invitations" href="/team" />
-      <Row icon={<MapPin color={colors.primary} />} title="Locations" subtitle="Rooms and areas where work happens" href="/locations" />
-      <UnavailableNotice feature="Push alerts for offers and escalations, and verified clock-ins" phase="Phases 4 and 6" />
+      <Dashboard orgId={orgId} />
+      <AppText variant="heading" style={{ marginTop: spacing.sm }}>Manage</AppText>
+      <Row icon={<CalendarDays size={20} color={colors.text} />} title="Events" subtitle="Plan events, publish them, and add tasks" href="/events" />
+      <Row icon={<Activity size={20} color={colors.text} />} title="Live roster" subtitle="Who is clocked in, on break, or paused" href="/roster" />
+      <Row icon={<Users size={20} color={colors.text} />} title="Team" subtitle="Members, roles, and invitations" href="/team" />
+      <Row icon={<MapPin size={20} color={colors.text} />} title="Locations" subtitle="Rooms and areas where work happens" href="/locations" />
     </Screen>
   );
 }

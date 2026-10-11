@@ -1,80 +1,75 @@
-import { router } from 'expo-router';
-import { SectionList, View } from 'react-native';
+import { useMemo, useState } from 'react';
+import { View } from 'react-native';
 import type { ScheduleItem } from '@teampilot/shared';
-import { AppText, Badge, Card, EmptyState, ErrorState, ListSkeleton } from '@/components/ui';
+import { AppText, EmptyState, ErrorState, ListSkeleton, Screen } from '@/components/ui';
 import { useActiveOrgId } from '@/features/org/OrgProvider';
 import { AssignmentActions } from '@/features/work/AssignmentActions';
 import { useSchedule } from '@/features/work/api';
-import { formatDay, formatRange, formatTime, humanize, statusTone } from '@/features/work/format';
+import { dayKey, MonthCalendar, type DayMarker } from '@/features/work/MonthCalendar';
+import { ScheduleRow } from '@/features/work/TodayList';
 import { errorMessage } from '@/lib/api';
 import { useTheme } from '@/theme';
 
-function groupByDay(items: ScheduleItem[]) {
-  const sections: Array<{ title: string; data: ScheduleItem[] }> = [];
-  for (const item of items) {
-    const title = formatDay(item.sortAt);
-    const last = sections[sections.length - 1];
-    if (last?.title === title) last.data.push(item);
-    else sections.push({ title, data: [item] });
-  }
-  return sections;
-}
+const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
 
-function whenLabel(item: ScheduleItem) {
-  if (item.event) return formatRange(item.event.startAt, item.event.endAt);
-  if (item.task.dispatchStartAt) return `Starts ${formatTime(item.task.dispatchStartAt)}`;
-  if (item.task.completionDeadline) return `Due ${formatTime(item.task.completionDeadline)}`;
-  return 'No set time';
+/** A day that needs a response outranks one with work, which outranks one with only finished work. */
+function markersFor(items: ScheduleItem[]) {
+  const rank: Record<DayMarker, number> = { action: 3, busy: 2, done: 1 };
+  const map = new Map<string, DayMarker>();
+  for (const i of items) {
+    const m: DayMarker = i.assignment.status === 'ASSIGNED' ? 'action' : i.assignment.status === 'COMPLETED' ? 'done' : 'busy';
+    const key = dayKey(new Date(i.sortAt));
+    const prev = map.get(key);
+    if (!prev || rank[m] > rank[prev]) map.set(key, m);
+  }
+  return map;
 }
 
 export default function ScheduleScreen() {
   const orgId = useActiveOrgId();
-  const { colors, spacing } = useTheme();
-  const schedule = useSchedule(orgId);
+  const { spacing } = useTheme();
+  const [month, setMonth] = useState(() => startOfMonth(new Date()));
+  const [selected, setSelected] = useState(() => new Date());
+  const range = useMemo(() => ({ from: month, to: new Date(month.getFullYear(), month.getMonth() + 1, 1) }), [month]);
+  const schedule = useSchedule(orgId, range);
 
-  if (schedule.isPending) return <View style={{ padding: spacing.lg }}><ListSkeleton /></View>;
-  if (schedule.error) {
-    return (
-      <View style={{ padding: spacing.lg }}>
-        <ErrorState message={errorMessage(schedule.error)} onRetry={() => void schedule.refetch()} />
-      </View>
-    );
-  }
+  const items = schedule.data ?? [];
+  const markers = useMemo(() => markersFor(items), [items]);
+  const dayItems = items.filter((i) => dayKey(new Date(i.sortAt)) === dayKey(selected));
+  const dayLabel = new Intl.DateTimeFormat(undefined, { weekday: 'long', month: 'short', day: 'numeric' }).format(selected);
 
   return (
-    <SectionList
-      style={{ backgroundColor: colors.background }}
-      contentContainerStyle={{ padding: spacing.lg, gap: spacing.sm }}
-      sections={groupByDay(schedule.data)}
-      keyExtractor={(i) => i.assignment.id}
-      refreshing={schedule.isRefetching}
-      onRefresh={() => void schedule.refetch()}
-      stickySectionHeadersEnabled={false}
-      renderSectionHeader={({ section }) => (
-        <AppText variant="label" tone="muted" style={{ marginTop: spacing.md }}>
-          {section.title}
+    <Screen refreshing={schedule.isRefetching} onRefresh={() => void schedule.refetch()}>
+      <MonthCalendar
+        month={month}
+        selected={selected}
+        markers={markers}
+        onSelect={setSelected}
+        onMonthChange={(delta) => {
+          const next = new Date(month.getFullYear(), month.getMonth() + delta, 1);
+          setMonth(next);
+          setSelected(dayKey(next) === dayKey(startOfMonth(new Date())) ? new Date() : next);
+        }}
+      />
+
+      <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+        <AppText variant="heading">{dayKey(selected) === dayKey(new Date()) ? 'Today' : dayLabel}</AppText>
+        <AppText variant="caption" tone="muted">
+          {dayItems.length} task{dayItems.length === 1 ? '' : 's'}
         </AppText>
-      )}
-      ListEmptyComponent={
-        <EmptyState title="Nothing scheduled" message="Tasks you are assigned to will show up here, grouped by day." />
-      }
-      renderItem={({ item }) => (
-        <Card onPress={() => router.push(`/tasks/${item.task.id}`)} accessibilityLabel={`Open ${item.task.title}`}>
-          <View style={{ gap: spacing.xs }}>
-            <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
-              <AppText variant="heading" style={{ flex: 1 }}>
-                {item.task.title}
-              </AppText>
-              <Badge label={humanize(item.assignment.status)} tone={statusTone(item.assignment.status)} />
-            </View>
-            <AppText tone="muted">{whenLabel(item)}</AppText>
-            {item.event || item.task.locationName ? (
-              <AppText tone="muted">{[item.event?.title, item.task.locationName].filter(Boolean).join(' · ')}</AppText>
-            ) : null}
-          </View>
-          <AssignmentActions orgId={orgId} assignmentId={item.assignment.id} status={item.assignment.status} />
-        </Card>
-      )}
-    />
+      </View>
+
+      {schedule.isPending ? <ListSkeleton rows={2} /> : null}
+      {schedule.error ? <ErrorState message={errorMessage(schedule.error)} onRetry={() => void schedule.refetch()} /> : null}
+      {!schedule.isPending && !dayItems.length ? <EmptyState title="Nothing this day" message="Pick a day with a dot to see your tasks." /> : null}
+      {dayItems.map((item) => (
+        <View key={item.assignment.id} style={{ gap: spacing.sm }}>
+          <ScheduleRow item={item} />
+          {item.assignment.status === 'ASSIGNED' ? (
+            <AssignmentActions orgId={orgId} assignmentId={item.assignment.id} status={item.assignment.status} />
+          ) : null}
+        </View>
+      ))}
+    </Screen>
   );
 }

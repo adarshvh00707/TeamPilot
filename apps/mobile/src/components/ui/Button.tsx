@@ -4,7 +4,8 @@ import { AppText } from './AppText';
 
 interface Props extends Omit<PressableProps, 'children' | 'style'> {
   label: string;
-  variant?: 'primary' | 'secondary' | 'danger' | 'ghost';
+  /** `onInk` is for buttons placed on a dark (ink) card. */
+  variant?: 'primary' | 'secondary' | 'danger' | 'ghost' | 'onInk';
   loading?: boolean;
   icon?: React.ReactNode;
   fullWidth?: boolean;
@@ -18,8 +19,9 @@ export function Button({ label, variant = 'primary', loading, disabled, icon, fu
     secondary: colors.surfaceMuted,
     danger: colors.danger,
     ghost: 'transparent',
+    onInk: 'rgba(255,255,255,0.12)',
   }[variant];
-  const fg = variant === 'primary' ? colors.primaryText : variant === 'danger' ? '#FFFFFF' : colors.text;
+  const fg = variant === 'primary' ? colors.primaryText : variant === 'danger' || variant === 'onInk' ? '#FFFFFF' : colors.text;
 
   return (
     <Pressable

@@ -120,7 +120,7 @@ export default function TaskScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const orgId = useActiveOrgId();
   const { isManager, me } = useOrg();
-  const { spacing } = useTheme();
+  const { colors, spacing, scale } = useTheme();
   const task = useTask(orgId, id);
   const cancelAssignment = useAssignmentAction(orgId);
 
@@ -139,10 +139,22 @@ export default function TaskScreen() {
           </AppText>
           <Badge label={humanize(t.status)} tone={statusTone(t.status)} />
         </View>
-        <AppText tone="muted">
-          Staffed {t.staffing.staffed}/{t.requiredHeadcount}
-          {t.minimumRequiredHeadcount ? ` (minimum ${t.minimumRequiredHeadcount})` : ''}
-        </AppText>
+        <View style={{ flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm }}>
+          <AppText variant="display">{t.staffing.staffed}</AppText>
+          <AppText tone="muted" style={{ marginBottom: 8 }}>
+            of {t.requiredHeadcount} staffed{t.minimumRequiredHeadcount ? ` · minimum ${t.minimumRequiredHeadcount}` : ''}
+          </AppText>
+        </View>
+        <View style={{ height: 8, borderRadius: 4, backgroundColor: colors.surfaceMuted, overflow: 'hidden' }}>
+          <View
+            style={{
+              width: `${Math.min(100, (t.staffing.staffed / Math.max(1, t.requiredHeadcount)) * 100)}%`,
+              height: '100%',
+              borderRadius: 4,
+              backgroundColor: t.staffing.staffed >= t.requiredHeadcount ? scale.high : t.staffing.staffed > 0 ? scale.mid : scale.low,
+            }}
+          />
+        </View>
         {t.event ? (
           <AppText tone="primary" onPress={() => router.push(`/events/${t.event!.id}`)}>
             {t.event.title} · {formatRange(t.event.startAt, t.event.endAt)}
