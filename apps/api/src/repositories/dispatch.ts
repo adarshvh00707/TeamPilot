@@ -102,14 +102,18 @@ export async function insertOffers(
   db: Queryable,
   input: { organizationId: string; taskId: string; roundId: string; roundNumber: number; userIds: string[]; windowMinutes: number },
 ) {
+  const created: Array<{ id: string; userId: string }> = [];
   for (const userId of input.userIds) {
-    await db.query(
+    const { rows } = await db.query<{ id: string }>(
       `insert into task_offers (organization_id, task_id, user_id, expires_at, dispatch_round_id, idempotency_key)
        values ($1, $2, $3, now() + make_interval(mins => $4::int), $5, $6)
-       on conflict (idempotency_key) do nothing`,
+       on conflict (idempotency_key) do nothing
+       returning id`,
       [input.organizationId, input.taskId, userId, input.windowMinutes, input.roundId, `${input.taskId}:${input.roundNumber}:${userId}`],
     );
+    if (rows[0]) created.push({ id: rows[0].id, userId });
   }
+  return created;
 }
 
 export async function setOfferStatus(db: Queryable, id: string, status: OfferStatus, reason: string) {

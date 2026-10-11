@@ -208,6 +208,13 @@ export const declineOfferSchema = z.object({
 });
 export type DeclineOfferInput = z.infer<typeof declineOfferSchema>;
 
+export const registerDeviceSchema = z.strictObject({
+  pushToken: z.string().trim().regex(/^(Exponent|Expo)PushToken\[[^\]]+\]$/, 'Expected an Expo push token'),
+  platform: z.enum(['ios', 'android', 'web']),
+  installationIdentifier: z.string().trim().max(200).optional(),
+});
+export type RegisterDeviceInput = z.infer<typeof registerDeviceSchema>;
+
 export const scheduleQuerySchema = z.object({
   from: dateTimeSchema.optional(),
   to: dateTimeSchema.optional(),

@@ -18,6 +18,7 @@ import {
 } from '../repositories/dispatch';
 import { getTask, insertAssignment, setAssignmentStatus, setTaskStatus } from '../repositories/tasks';
 import { AppError, conflict, notFound } from '../utils/errors';
+import { notifyEscalation, notifyOffers } from './notifications';
 import { syncStaffing, type Actor } from './work';
 
 const DISPATCHABLE_FROM: readonly TaskStatus[] = ['SCHEDULED', 'PARTIALLY_STAFFED', 'NEEDS_MANAGER_ATTENTION'];
@@ -29,8 +30,9 @@ async function moveTask(tx: Queryable, task: Task, to: TaskStatus) {
   return (await setTaskStatus(tx, task.organizationId, task.id, to))!;
 }
 
-async function escalate(tx: Queryable, task: Task, reason: string, actorUserId: string | null) {
+async function escalate(tx: Queryable, task: Task, reason: string, actorUserId: string | null, roundNumber: number) {
   await moveTask(tx, task, 'NEEDS_MANAGER_ATTENTION');
+  await notifyEscalation(tx, task, reason, `${task.id}:${roundNumber}`);
   await writeAudit(tx, {
     organizationId: task.organizationId,
     actorUserId,
@@ -85,10 +87,10 @@ async function runWave(tx: Queryable, task: Task, actorUserId: string | null) {
     metadata: { roundNumber, offered: plan.selected.length, eligible: plan.ranked.length, ineligibleByReason },
   });
   if (!plan.selected.length) {
-    await escalate(tx, task, 'NO_ELIGIBLE_CANDIDATES', actorUserId);
+    await escalate(tx, task, 'NO_ELIGIBLE_CANDIDATES', actorUserId, roundNumber);
     return { roundNumber, offered: 0 };
   }
-  await insertOffers(tx, {
+  const offers = await insertOffers(tx, {
     organizationId: task.organizationId,
     taskId: task.id,
     roundId,
@@ -96,6 +98,7 @@ async function runWave(tx: Queryable, task: Task, actorUserId: string | null) {
     userIds: plan.selected,
     windowMinutes: task.offerResponseWindowMinutes,
   });
+  await notifyOffers(tx, task, offers);
   return { roundNumber, offered: plan.selected.length };
 }
 
@@ -162,7 +165,7 @@ export async function advanceDispatch(tx: Queryable, organizationId: string, tas
       });
       return 'done';
     }
-    await escalate(tx, task, 'MAX_WAVES_REACHED', null);
+    await escalate(tx, task, 'MAX_WAVES_REACHED', null, round.roundNumber);
     return 'escalated';
   }
   const dispatching = await moveTask(tx, task, 'DISPATCHING');

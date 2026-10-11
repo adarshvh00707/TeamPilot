@@ -74,8 +74,16 @@ npm-workspaces monorepo: Expo SDK 57 mobile app, Express 5 API, BullMQ worker, s
 - [x] Tests: 18 shared (planner, state machines), 9 dispatch API tests (escalation, availability, concurrent accept, decline, expiry via sweep, paused exclusion)
 - [x] Verified on the hosted project with Upstash Redis: 4 concurrent accepts on a 1-person task produced exactly one winner and three `CAPACITY_FILLED` withdrawals
 
-### Phase 4: Notifications (not started; schema prepared)
-Expo push registration, durable notification jobs, reminders, rescheduling and cancellation, delivery receipts, in-app notification center.
+### Phase 4: Notifications (core complete)
+
+- [x] Expo project `@sma267/teampilot-ai` linked; devices register Expo push tokens (`POST /me/devices`) and revoke on sign-out
+- [x] Transactional outbox: offer, manual-assignment, and escalation events write an in-app notification and a push job in the same transaction, with idempotency keys
+- [x] Worker sends due jobs every 5s via the Expo push API (claimed with `SKIP LOCKED`, stuck jobs recovered), retries transport/rate-limit errors with exponential backoff (5 attempts), marks `DeviceNotRegistered` tokens invalid, cancels offer pushes once the offer is no longer open, and confirms delivery from Expo receipts every 15 minutes
+- [x] Per-type push opt-out via `notificationPreferences` (in-app is always kept)
+- [x] Mobile: in-app inbox with unread state and mark read, push preference switches, tapping a push opens the related screen
+- [x] Tests: 9 notification tests with a fake push sender; verified on hosted Postgres (worker claimed and settled real jobs)
+- [ ] Scheduled reminders before task start, and notifications for schedule changes and cancellations
+- [ ] End-to-end push on a physical device (iOS Expo Go works; Android needs a development build because Expo Go on Android no longer supports remote push)
 
 ### Phases 5–7: Not started
 AI task creation and import, assistant, Sling and Teams integrations, email (Resend), release hardening, billing.
@@ -93,7 +101,7 @@ None for continuing development. The following are needed to validate against re
 | --- | --- |
 | Now (run the app) | Supabase project URL, publishable key, DB connection string, JWT secret or JWKS |
 | Phase 3 | Redis URL (managed Redis in staging/prod) |
-| Phase 4 | Expo access token; APNs key (Apple Developer); FCM v1 service account (Firebase) |
+| Phase 4 | Expo project (done); Expo access token only if enhanced push security is enabled; APNs key and FCM v1 service account for standalone builds |
 | Phase 5 | LLM provider API key |
 | Phase 6 | Sling API access (must be verified as officially available first); Microsoft Entra app registration and tenant consent; Resend API key |
 | Billing (future) | Stripe keys and webhook secret |
@@ -107,4 +115,5 @@ None for continuing development. The following are needed to validate against re
 ## Next milestones
 
 1. Add a Postgres service container to CI for multi-connection concurrency tests.
-2. **Phase 4**: push notifications for offers and escalations (needs Expo access token, APNs key, FCM service account).
+2. Finish Phase 4: task reminders and change/cancellation notifications; verify push on a physical device.
+3. **Phase 5**: AI features (needs an LLM provider API key).

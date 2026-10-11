@@ -1,13 +1,15 @@
 import { Redirect, Stack } from 'expo-router';
 import { ListSkeleton, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
+import { usePushNotifications } from '@/features/notifications/push';
 import { useOrg } from '@/features/org/OrgProvider';
 import { useTheme } from '@/theme';
 
 export default function AppLayout() {
   const { session, initializing } = useAuth();
-  const { loading } = useOrg();
+  const { loading, active } = useOrg();
   const { colors } = useTheme();
+  usePushNotifications(session ? active?.organizationId : undefined);
   if (!initializing && !session) return <Redirect href="/welcome" />;
   // Deep links can land on any screen; hold rendering until the session and memberships are known.
   if (initializing || loading) {
@@ -37,6 +39,7 @@ export default function AppLayout() {
       <Stack.Screen name="events/[id]" options={{ title: 'Event' }} />
       <Stack.Screen name="tasks/new" options={{ title: 'New task', presentation: 'modal' }} />
       <Stack.Screen name="tasks/[id]" options={{ title: 'Task' }} />
+      <Stack.Screen name="roster" options={{ title: 'Live roster' }} />
     </Stack>
   );
 }

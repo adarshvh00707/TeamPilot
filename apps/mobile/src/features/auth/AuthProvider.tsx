@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import type { Session } from '@supabase/supabase-js';
 import { useQueryClient } from '@tanstack/react-query';
+import { revokePushToken } from '@/features/notifications/push';
 import { supabase } from '@/lib/supabase';
 
 interface AuthState {
@@ -33,6 +34,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       session,
       initializing,
       signOut: async () => {
+        await revokePushToken();
         await supabase.auth.signOut();
       },
     }),

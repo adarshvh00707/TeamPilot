@@ -14,6 +14,7 @@ import {
   updateLocationSchema,
   updateMembershipSchema,
   updateOrganizationSchema,
+  registerDeviceSchema,
   updateProfileSchema,
 } from '@teampilot/shared';
 
@@ -83,6 +84,11 @@ const operations: Operation[] = [
   { method: 'post', path: `${ORG}/offers/{offerId}/decline`, summary: 'Decline an offer', tag: 'Dispatch', minRole: 'STAFF' },
   { method: 'post', path: `${ORG}/tasks/{taskId}/dispatch`, summary: 'Start automatic dispatch', tag: 'Dispatch', minRole: 'MANAGER' },
   { method: 'post', path: `${ORG}/tasks/{taskId}/dispatch/stop`, summary: 'Stop dispatch and withdraw open offers', tag: 'Dispatch', minRole: 'MANAGER' },
+  { method: 'post', path: '/api/v1/me/devices', summary: 'Register an Expo push token', tag: 'Notifications', body: registerDeviceSchema },
+  { method: 'post', path: '/api/v1/me/devices/revoke', summary: 'Stop push to a device (sign-out)', tag: 'Notifications' },
+  { method: 'get', path: `${ORG}/notifications`, summary: 'My in-app notifications (meta.unread)', tag: 'Notifications', minRole: 'STAFF' },
+  { method: 'post', path: `${ORG}/notifications/read-all`, summary: 'Mark all notifications read', tag: 'Notifications', minRole: 'STAFF' },
+  { method: 'post', path: `${ORG}/notifications/{notificationId}/read`, summary: 'Mark a notification read', tag: 'Notifications', minRole: 'STAFF' },
 ];
 
 const errorSchema = {

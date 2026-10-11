@@ -5,7 +5,9 @@ import { loadWorkerConfig } from './config';
 import { DEFAULT_JOB_OPTIONS, QUEUES, jobId } from './queues/definitions';
 import { processMaintenance } from './processors/maintenance';
 import { processDispatch } from './processors/dispatch';
+import { processNotifications } from './processors/notifications';
 import { createPgDb } from '../../api/src/db/pg';
+import { createExpoSender } from '../../api/src/services/notifications';
 
 const config = loadWorkerConfig();
 const logger = pino({ level: config.LOG_LEVEL, base: { service: 'worker' } });
@@ -15,6 +17,7 @@ const db = createPgDb({
   caFile: config.DATABASE_SSL_CA_FILE,
   max: config.DATABASE_POOL_MAX,
 });
+const pushSender = createExpoSender(config.EXPO_ACCESS_TOKEN);
 
 const url = new URL(config.REDIS_URL);
 const connection: ConnectionOptions = {
@@ -28,6 +31,7 @@ const connection: ConnectionOptions = {
 
 const maintenanceQueue = new Queue(QUEUES.maintenance, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
 const dispatchQueue = new Queue(QUEUES.dispatch, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
+const notificationsQueue = new Queue(QUEUES.notifications, { connection, defaultJobOptions: DEFAULT_JOB_OPTIONS });
 
 const workers = [
   new Worker(QUEUES.maintenance, (job) => processMaintenance(job, logger), {
@@ -36,6 +40,7 @@ const workers = [
   }),
   // Concurrency 1: sweeps lock task rows, so overlapping sweeps would only contend with each other.
   new Worker(QUEUES.dispatch, (job) => processDispatch(job, db, logger), { connection, concurrency: 1 }),
+  new Worker(QUEUES.notifications, (job) => processNotifications(job, db, pushSender, logger), { connection, concurrency: 1 }),
 ];
 
 for (const w of workers) {
@@ -53,6 +58,16 @@ await dispatchQueue.upsertJobScheduler(
   { every: config.DISPATCH_SWEEP_MS },
   { name: 'sweep', data: {}, opts: { attempts: 1, removeOnComplete: 100, removeOnFail: 500 } },
 );
+await notificationsQueue.upsertJobScheduler(
+  jobId('push-send'),
+  { every: config.NOTIFICATION_SWEEP_MS },
+  { name: 'send', data: {}, opts: { attempts: 1, removeOnComplete: 100, removeOnFail: 500 } },
+);
+await notificationsQueue.upsertJobScheduler(
+  jobId('push-receipts'),
+  { every: 15 * 60_000 },
+  { name: 'receipts', data: {}, opts: { attempts: 1, removeOnComplete: 100, removeOnFail: 500 } },
+);
 
 const health = createServer((req, res) => {
   const ok = workers.every((w) => w.isRunning());
@@ -69,7 +84,7 @@ async function shutdown(signal: string) {
   setTimeout(() => process.exit(1), 30_000).unref();
   // Worker.close() waits for in-flight jobs to finish, so restarts do not drop work.
   await Promise.allSettled(workers.map((w) => w.close()));
-  await Promise.allSettled([maintenanceQueue.close(), dispatchQueue.close()]);
+  await Promise.allSettled([maintenanceQueue.close(), dispatchQueue.close(), notificationsQueue.close()]);
   await db.close();
   health.close();
   process.exit(0);

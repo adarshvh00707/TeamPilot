@@ -216,6 +216,17 @@ export interface TaskDispatchState {
   offers: Offer[];
 }
 
+export interface InAppNotification {
+  id: string;
+  type: string;
+  title: string;
+  body: string | null;
+  /** `url` is an in-app route to open when tapped. */
+  data: { url?: string; taskId?: string; offerId?: string };
+  readAt: string | null;
+  createdAt: string;
+}
+
 export interface ScheduleItem {
   assignment: Pick<TaskAssignment, 'id' | 'status' | 'assignmentSource' | 'assignedAt' | 'acceptedAt' | 'startedAt' | 'completedAt'>;
   task: Pick<

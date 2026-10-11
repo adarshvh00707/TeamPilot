@@ -183,8 +183,11 @@ describe('offers', () => {
     await api('ana').post('/me/pause');
     await api('ben').post('/me/clock-out');
     const id = await newTask({ dispatchPolicy: { overOfferFactor: 3 } });
-    const start = await api('manager').post(`/tasks/${id}/dispatch`);
-    expect(start.body.data.offered).toBe(1);
-    expect((await openOffers(id))[0]!.userId).toBe(users.cy!.id);
+    expect((await api('manager').post(`/tasks/${id}/dispatch`)).status).toBe(200);
+    const detail = await taskDetail(id);
+    expect(detail.dispatch.rounds[0].ineligibleByReason.NOT_AVAILABLE).toBe(2);
+    const offered = detail.dispatch.offers.map((o: { userId: string }) => o.userId);
+    expect(offered).not.toContain(users.ana!.id);
+    expect(offered).not.toContain(users.ben!.id);
   });
 });

@@ -71,8 +71,10 @@ export type AttendanceVerificationStatus = (typeof ATTENDANCE_VERIFICATION_STATU
 export const ATTENDANCE_SOURCES = ['SLING', 'MANUAL', 'MANAGER', 'SYSTEM'] as const;
 export type AttendanceSource = (typeof ATTENDANCE_SOURCES)[number];
 
+/** Types double as `notificationPreferences` keys; setting one to false turns off its push (in-app is kept). */
 export const NOTIFICATION_TYPES = [
   'TASK_OFFER',
+  'TASK_ASSIGNED',
   'ASSIGNMENT_ACCEPTED',
   'ASSIGNMENT_REMINDER',
   'SCHEDULE_CHANGE',

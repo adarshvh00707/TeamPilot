@@ -14,6 +14,7 @@ import { buildOpenApiDocument } from './routes/openapi';
 import { organizationsRouter } from './routes/organizations';
 import { workRouter } from './routes/work';
 import { dispatchRouter } from './routes/dispatch';
+import { notificationsRouter } from './routes/notifications';
 
 export interface AppDeps {
   db: Db;
@@ -81,6 +82,7 @@ export function createApp(deps: AppDeps): Express {
   v1.use(organizationsRouter(deps));
   v1.use(workRouter(deps));
   v1.use(dispatchRouter(deps));
+  v1.use(notificationsRouter(deps));
   app.use('/api/v1', v1);
 
   app.use(notFoundHandler);

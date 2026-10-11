@@ -32,6 +32,7 @@ import {
   updateTaskFields,
 } from '../repositories/tasks';
 import { badRequest, conflict, forbidden, notFound } from '../utils/errors';
+import { notifyAssignment } from './notifications';
 
 export interface Actor {
   organizationId: string;
@@ -277,6 +278,7 @@ export async function assignMember(db: Db, actor: Actor, taskId: string, input: 
       entityId: assignment.id,
       metadata: { taskId, userId: input.userId, ...(overCapacity ? { overrideReason: input.overrideReason } : {}) },
     });
+    if (input.userId !== actor.actorUserId) await notifyAssignment(tx, task, input.userId, assignment.id);
     return assignment;
   });
 }
