@@ -216,6 +216,15 @@ export interface TaskDispatchState {
   offers: Offer[];
 }
 
+export interface ManagerDashboard {
+  /** Across open tasks; staffed counts accepted/in-progress people, capped at each task's headcount. */
+  staffing: { required: number; staffed: number; openTasks: number; needsAttention: number };
+  offers: { open: number; sentLast7Days: number; acceptedLast7Days: number; medianResponseSeconds: number | null };
+  people: { staff: number; clockedIn: number; onBreak: number };
+  /** Oldest first, 7 days ending today in the organization's time zone. */
+  completedByDay: Array<{ day: string; completed: number }>;
+}
+
 export interface InAppNotification {
   id: string;
   type: string;

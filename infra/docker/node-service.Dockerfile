@@ -13,10 +13,12 @@ COPY apps/mobile/package.json apps/mobile/
 
 FROM manifests AS build
 ARG SERVICE
-RUN npm ci --workspace @teampilot/${SERVICE} --workspace @teampilot/shared --ignore-scripts
+# The worker bundles API source (repositories/services), so both are always installed and copied.
+RUN npm ci --workspace @teampilot/api --workspace @teampilot/worker --workspace @teampilot/shared --ignore-scripts
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
-COPY apps/${SERVICE} apps/${SERVICE}
+COPY apps/api apps/api
+COPY apps/worker apps/worker
 RUN npm run build --workspace @teampilot/${SERVICE}
 
 FROM manifests AS prod-deps
