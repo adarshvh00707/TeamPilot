@@ -1,8 +1,16 @@
-# Render Blueprint: API (public web service) + worker (background worker).
-# Render passes service env vars to the Docker build as build args, which selects SERVICE.
+# Render Blueprint (free plan): one web service running the API and worker together.
+# Free services sleep after 15 min without traffic; background jobs pause while asleep.
+# For production, split into a `web` + `worker` on paid plans using node-service.Dockerfile.
 # Values marked `sync: false` are entered in the Render dashboard when the Blueprint is created.
-envVarGroups:
-  - name: teampilot-shared
+services:
+  - type: web
+    name: teampilot-api
+    runtime: docker
+    plan: free
+    dockerfilePath: ./infra/docker/combined.Dockerfile
+    dockerContext: .
+    healthCheckPath: /health
+    autoDeploy: true
     envVars:
       - key: NODE_ENV
         value: production
@@ -15,23 +23,9 @@ envVarGroups:
       - key: DATABASE_SSL_CA_FILE
         value: /app/certs/supabase-prod-ca-2021.crt
       - key: DATABASE_POOL_MAX
-        value: "5"
+        value: "3"
       - key: REDIS_URL
         sync: false
-
-services:
-  - type: web
-    name: teampilot-api
-    runtime: docker
-    plan: starter
-    dockerfilePath: ./infra/docker/node-service.Dockerfile
-    dockerContext: .
-    healthCheckPath: /ready
-    autoDeploy: true
-    envVars:
-      - fromGroup: teampilot-shared
-      - key: SERVICE
-        value: api
       - key: SUPABASE_URL
         sync: false
       - key: SUPABASE_JWT_SECRET
@@ -40,17 +34,5 @@ services:
         value: "true"
       - key: CORS_ORIGINS
         sync: false
-
-  - type: worker
-    name: teampilot-worker
-    runtime: docker
-    plan: starter
-    dockerfilePath: ./infra/docker/node-service.Dockerfile
-    dockerContext: .
-    autoDeploy: true
-    envVars:
-      - fromGroup: teampilot-shared
-      - key: SERVICE
-        value: worker
       - key: EXPO_ACCESS_TOKEN
         sync: false
