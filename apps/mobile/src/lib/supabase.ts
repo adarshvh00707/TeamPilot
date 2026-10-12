@@ -9,7 +9,8 @@ export const supabase = createClient(env.supabaseUrl, env.supabasePublishableKey
     storage: Platform.OS === 'web' ? undefined : secureStorage,
     autoRefreshToken: true,
     persistSession: true,
-    detectSessionInUrl: false,
+    // Web returns from Google OAuth with the session in the URL; native handles redirects itself.
+    detectSessionInUrl: Platform.OS === 'web',
   },
 });
 
