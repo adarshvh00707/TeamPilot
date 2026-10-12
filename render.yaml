@@ -30,4 +30,6 @@ services:
         sync: false
       - key: TRUST_PROXY
         value: "true"
-# Optional, add in the service's Environment tab if needed: SUPABASE_JWT_SECRET, CORS_ORIGINS, EXPO_ACCESS_TOKEN.
+      - key: CORS_ORIGINS
+        value: https://teampilot-ai.expo.app
+# Optional, add in the service's Environment tab if needed: SUPABASE_JWT_SECRET, EXPO_ACCESS_TOKEN.
