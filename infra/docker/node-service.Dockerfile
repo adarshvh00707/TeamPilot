@@ -14,7 +14,8 @@ COPY apps/mobile/package.json apps/mobile/
 FROM manifests AS build
 ARG SERVICE
 # The worker bundles API source (repositories/services), so both are always installed and copied.
-RUN npm ci --workspace @teampilot/api --workspace @teampilot/worker --workspace @teampilot/shared --ignore-scripts
+# Install scripts must run so esbuild fetches its Linux binary (the lockfile is generated on Windows).
+RUN npm ci --workspace @teampilot/api --workspace @teampilot/worker --workspace @teampilot/shared
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/api apps/api
