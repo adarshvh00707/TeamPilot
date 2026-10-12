@@ -13,6 +13,12 @@ COPY apps/mobile/package.json apps/mobile/
 FROM manifests AS build
 # Install scripts must run so esbuild fetches its Linux binary (the lockfile is generated on Windows).
 RUN npm ci --workspace @teampilot/api --workspace @teampilot/worker --workspace @teampilot/shared
+# Rollup's native binary has no install script, so add the Alpine build at the locked version.
+RUN v=$(node -p "require('/app/node_modules/rollup/package.json').version") \
+ && mkdir /tmp/native && cd /tmp/native && npm init -y >/dev/null \
+ && npm install --no-audit --no-fund @rollup/rollup-linux-x64-musl@$v \
+ && cp -r node_modules/@rollup/rollup-linux-x64-musl /app/node_modules/@rollup/ \
+ && rm -rf /tmp/native
 COPY tsconfig.base.json ./
 COPY packages/shared packages/shared
 COPY apps/api apps/api
