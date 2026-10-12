@@ -32,7 +32,7 @@ export function PillTabBar({ state, descriptors, navigation }: TabBarProps) {
           // expo-router hides `href: null` tabs this way.
           if ((options.tabBarItemStyle as { display?: string } | undefined)?.display === 'none') return null;
           const focused = state.index === index;
-          const label = options.title ?? route.name;
+          const label = typeof options.tabBarLabel === 'string' ? options.tabBarLabel : (options.title ?? route.name);
           const fg = focused ? colors.ink : '#A1A1AA';
           const badge = options.tabBarBadge;
           return (
@@ -58,7 +58,7 @@ export function PillTabBar({ state, descriptors, navigation }: TabBarProps) {
                 opacity: pressed ? 0.7 : 1,
               })}
             >
-              <View>
+              <View style={{ marginRight: badge && focused ? 6 : 0 }}>
                 {options.tabBarIcon?.({ focused, color: fg, size: 20 })}
                 {badge ? (
                   <View

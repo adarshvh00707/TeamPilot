@@ -16,7 +16,7 @@ const PUSH_PREFS = [
 
 function PushPreferences() {
   const { me } = useOrg();
-  const { spacing } = useTheme();
+  const { colors, spacing } = useTheme();
   const update = useUpdateProfile();
   const prefs = me?.profile.notificationPreferences ?? {};
   return (
@@ -27,9 +27,12 @@ function PushPreferences() {
       </AppText>
       {PUSH_PREFS.map((p) => (
         <View key={p.key} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
-          <AppText>{p.label}</AppText>
+          <AppText style={{ flex: 1 }}>{p.label}</AppText>
           <Switch
             accessibilityLabel={p.label}
+            trackColor={{ false: colors.surfaceMuted, true: colors.ink }}
+            thumbColor="#FFFFFF"
+            {...({ activeThumbColor: '#FFFFFF' } as object)}
             value={prefs[p.key] !== false}
             disabled={update.isPending}
             onValueChange={(v) => update.mutate({ notificationPreferences: { [p.key]: v } })}
@@ -53,9 +56,12 @@ export default function NotificationsScreen() {
       {inbox.error ? <ErrorState message={errorMessage(inbox.error)} onRetry={() => void inbox.refetch()} /> : null}
       {inbox.data ? (
         <>
-          {inbox.data.unread ? (
-            <Button label={`Mark all ${inbox.data.unread} as read`} variant="ghost" loading={markRead.isPending} onPress={() => markRead.mutate(undefined)} />
-          ) : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm }}>
+            <AppText variant="heading">{inbox.data.unread ? `${inbox.data.unread} unread` : 'All caught up'}</AppText>
+            {inbox.data.unread ? (
+              <Button label="Mark all read" variant="secondary" fullWidth={false} loading={markRead.isPending} onPress={() => markRead.mutate(undefined)} />
+            ) : null}
+          </View>
           {!inbox.data.items.length ? <EmptyState title="No notifications yet" message="Offers, assignments, and alerts will show up here." /> : null}
           {inbox.data.items.map((n) => (
             <Card

@@ -1,5 +1,7 @@
-import { Redirect, Stack } from 'expo-router';
-import { ListSkeleton, Screen } from '@/components/ui';
+import { Redirect, router, Stack } from 'expo-router';
+import { ChevronLeft } from 'lucide-react-native';
+import { Platform, View } from 'react-native';
+import { IconButton, ListSkeleton, Screen } from '@/components/ui';
 import { useAuth } from '@/features/auth/AuthProvider';
 import { usePushNotifications } from '@/features/notifications/push';
 import { useOrg } from '@/features/org/OrgProvider';
@@ -8,7 +10,7 @@ import { useTheme } from '@/theme';
 export default function AppLayout() {
   const { session, initializing } = useAuth();
   const { loading, active } = useOrg();
-  const { colors } = useTheme();
+  const { colors, spacing } = useTheme();
   usePushNotifications(session ? active?.organizationId : undefined);
   if (!initializing && !session) return <Redirect href="/welcome" />;
   // Deep links can land on any screen; hold rendering until the session and memberships are known.
@@ -22,8 +24,21 @@ export default function AppLayout() {
   return (
     <Stack
       screenOptions={{
-        headerStyle: { backgroundColor: colors.surface },
+        headerStyle: { backgroundColor: colors.background },
+        headerShadowVisible: false,
         headerTintColor: colors.text,
+        headerTitleStyle: { fontWeight: '600', fontSize: 17 },
+        headerTitleAlign: 'center',
+        headerBackVisible: false,
+        headerLeft: () => (
+          <View style={{ marginLeft: Platform.OS === 'web' ? spacing.lg : 0 }}>
+            <IconButton
+              icon={<ChevronLeft size={22} color={colors.text} />}
+              accessibilityLabel="Back"
+              onPress={() => (router.canGoBack() ? router.back() : router.replace('/home'))}
+            />
+          </View>
+        ),
         contentStyle: { backgroundColor: colors.background },
       }}
     >

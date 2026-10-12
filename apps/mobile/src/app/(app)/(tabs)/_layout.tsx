@@ -42,6 +42,7 @@ export default function TabsLayout() {
         name="operations"
         options={{
           title: 'Operations',
+          tabBarLabel: 'Ops',
           // Navigation visibility is a convenience only; the API enforces manager permissions.
           href: isManager ? undefined : null,
           tabBarIcon: ({ color, size }) => <Gauge color={color} size={size} />,
@@ -49,7 +50,7 @@ export default function TabsLayout() {
       />
       <Tabs.Screen name="schedule" options={{ title: 'Schedule', tabBarIcon: ({ color, size }) => <CalendarDays color={color} size={size} /> }} />
       <Tabs.Screen name="tasks" options={{ title: 'Tasks', tabBarIcon: ({ color, size }) => <ClipboardList color={color} size={size} /> }} />
-      <Tabs.Screen name="notifications" options={{ title: 'Notifications', tabBarBadge: unread ? (unread > 9 ? '9+' : unread) : undefined, tabBarIcon: ({ color, size }) => <Bell color={color} size={size} /> }} />
+      <Tabs.Screen name="notifications" options={{ title: 'Notifications', tabBarLabel: 'Inbox', tabBarBadge: unread ? (unread > 9 ? '9+' : unread) : undefined, tabBarIcon: ({ color, size }) => <Bell color={color} size={size} /> }} />
       <Tabs.Screen name="profile" options={{ title: 'Profile', tabBarIcon: ({ color, size }) => <User color={color} size={size} /> }} />
     </Tabs>
   );

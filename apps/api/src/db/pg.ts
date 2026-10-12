@@ -12,6 +12,8 @@ export function createPgDb(opts: { connectionString: string; ssl: boolean; caFil
     idleTimeoutMillis: 30_000,
     connectionTimeoutMillis: 5_000,
   });
+  // Idle clients can be dropped by the network (sleep, pooler restarts); without a listener pg crashes the process.
+  pool.on('error', (err) => console.warn(`[db] idle client error: ${err.message}`));
 
   const wrap = (q: pg.Pool | pg.PoolClient): Queryable => ({
     async query<T>(text: string, params?: unknown[]): Promise<QueryResult<T>> {

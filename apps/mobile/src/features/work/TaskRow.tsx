@@ -23,7 +23,7 @@ export function TaskRow({ task }: { task: Task }) {
           <AppText variant="caption" tone="muted" numberOfLines={1} style={{ flex: 1 }}>
             {[pending > 0 ? `${pending} pending` : null, task.locationName, task.completionDeadline ? `Due ${formatDateTime(task.completionDeadline)}` : null]
               .filter(Boolean)
-              .join(' · ') || 'Staffing'}
+              .join(' · ') || 'Staffed'}
           </AppText>
           <AppText variant="label">
             {task.staffing.staffed}/{task.requiredHeadcount}

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Alert, Platform, View } from 'react-native';
-import { router, Stack, useLocalSearchParams } from 'expo-router';
+import { router, useLocalSearchParams } from 'expo-router';
 import { MANUAL_TASK_TARGETS, taskStateMachine, type TaskDetail, type TaskStatus } from '@teampilot/shared';
 import { AppText, Badge, Button, Card, Chip, ErrorState, Input, ListSkeleton, Screen } from '@/components/ui';
 import { DispatchPanel } from '@/features/dispatch/DispatchPanel';
@@ -131,7 +131,6 @@ export default function TaskScreen() {
 
   return (
     <Screen refreshing={task.isRefetching} onRefresh={() => void task.refetch()}>
-      <Stack.Screen options={{ title: t.title }} />
       <Card>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: spacing.sm }}>
           <AppText variant="title" style={{ flex: 1 }}>
