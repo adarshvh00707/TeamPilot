@@ -28,11 +28,6 @@ services:
         sync: false
       - key: SUPABASE_URL
         sync: false
-      - key: SUPABASE_JWT_SECRET
-        sync: false
       - key: TRUST_PROXY
         value: "true"
-      - key: CORS_ORIGINS
-        sync: false
-      - key: EXPO_ACCESS_TOKEN
-        sync: false
+# Optional, add in the service's Environment tab if needed: SUPABASE_JWT_SECRET, CORS_ORIGINS, EXPO_ACCESS_TOKEN.
